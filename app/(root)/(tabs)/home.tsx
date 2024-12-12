@@ -28,8 +28,8 @@ const Home = () => {
             alt="Logo"
             resizeMode="contain"
           />
-          <Text className="text-xl font-JakartaExtraBold">
-            Hai Khaidir {user?.firstName}
+          <Text className="text-lg font-JakartaExtraBold">
+            User example{user?.firstName}
           </Text>
           <TouchableOpacity
             className="justify-center items-center w-10 h-10 rounded-lg border border-gray-200 bg-white"

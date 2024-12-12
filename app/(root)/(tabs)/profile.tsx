@@ -22,15 +22,7 @@ const Profile = () => {
         <View className="bg-sky-400 rounded-b-[30px] px-5 pt-10 pb-8">
           <View className="absolute top-5 left-5 flex flex-row items-center">
 
-          <TouchableOpacity>
-            <View className="h-10 w-10 border-2 border-white rounded-full flex items-center justify-center">
-            <Image
-              source={icons.arrowDown}
-              className="w-6 h-6 origin-top rotate-90"
-              tintColor="#ffffff"
-              />
-            </View>
-          </TouchableOpacity>
+          
           <Text className="text-white text-xl font-JakartaSemiBold ml-5">
             Profile
           </Text>
