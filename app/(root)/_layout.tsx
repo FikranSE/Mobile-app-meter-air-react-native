@@ -12,7 +12,7 @@ const Layout = () => {
         }}
       />
       <Stack.Screen
-        name="book-ride"
+        name="tagihan-page"
         options={{
           headerShown: false,
         }}

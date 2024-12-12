@@ -87,7 +87,7 @@ const SignUp = () => {
     {/* header signup */}
 <View className="relative w-full h-[250px] bg-sky-400 rounded-bl-3xl rounded-br-3xl flex items-center justify-center mb-[-40px]">
   {/* Logo Image */}
-  <Image source={images.waterDrop} className="mt-5 w-16 h-16 absolute top-5" />
+  <Image source={images.logo} className="mt-5 w-16 h-16 absolute top-5 rounded-full" />
 
   <View className="mt-10 flex items-center justify-center">
     <Text className="text-2xl text-white font-semibold font-JakartaSemiBold">

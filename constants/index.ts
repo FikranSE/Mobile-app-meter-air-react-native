@@ -11,13 +11,18 @@ import google from "@/assets/icons/google.png";
 import home from "@/assets/icons/home.png";
 import list from "@/assets/icons/list.png";
 import lock from "@/assets/icons/lock.png";
+import drops from "@/assets/icons/drops.png";
 import phone from "@/assets/icons/phone.png";
 import map from "@/assets/icons/map.png";
 import marker from "@/assets/icons/marker.png";
 import out from "@/assets/icons/out.png";
+import teardrop from "@/assets/icons/teardrop.png";
 import person from "@/assets/icons/person.png";
 import pin from "@/assets/icons/pin.png";
+import bell from "@/assets/icons/bell.png";
+import filter from "@/assets/icons/filter.png";
 import point from "@/assets/icons/point.png";
+import cancel from "@/assets/icons/cancel.png";
 import profile from "@/assets/icons/profile.png";
 import search from "@/assets/icons/search.png";
 import selectedMarker from "@/assets/icons/selected-marker.png";
@@ -34,6 +39,11 @@ import onboarding3 from "@/assets/images/onboarding3.png";
 import signUpWater from "@/assets/images/signUpWater.jpg";
 import waterDrop from "@/assets/images/water-drop.png";
 import banner from "@/assets/images/banner.jpeg";
+import logo from "@/assets/images/logo.jpg";
+import berita1 from "@/assets/images/berita1.jpg";
+import berita2 from "@/assets/images/berita2.jpg";
+import profile1 from "@/assets/images/profile1.jpg";
+import banner1 from "@/assets/images/banner1.jpg";
 
 export const images = {
   onboarding1,
@@ -46,9 +56,15 @@ export const images = {
   message,
   waterDrop,
   banner,
+  logo,
+  berita1,
+  berita2,
+  profile1,
+  banner1
 };
 
 export const icons = {
+  filter,
   arrowDown,
   arrowUp,
   backArrow,
@@ -75,6 +91,10 @@ export const icons = {
   star,
   target,
   to,
+  drops,
+  teardrop,
+  cancel,
+  bell,
 };
 
 export const onboarding = [
