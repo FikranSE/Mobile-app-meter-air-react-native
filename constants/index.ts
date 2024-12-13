@@ -19,6 +19,7 @@ import out from "@/assets/icons/out.png";
 import teardrop from "@/assets/icons/teardrop.png";
 import person from "@/assets/icons/person.png";
 import pin from "@/assets/icons/pin.png";
+import warning from "@/assets/icons/warning.png";
 import bell from "@/assets/icons/bell.png";
 import filter from "@/assets/icons/filter.png";
 import point from "@/assets/icons/point.png";
@@ -95,6 +96,7 @@ export const icons = {
   teardrop,
   cancel,
   bell,
+  warning,
 };
 
 export const onboarding = [

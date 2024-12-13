@@ -4,11 +4,7 @@ import TagihanCard from "@/components/TagihanCard";
 
 const Tagihan = () => {
   return (
-    <TagihanCard>
-      
-      <View className="my-3" />
-
-    </TagihanCard>
+    <TagihanCard/>
   );
 };
 
