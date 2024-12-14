@@ -32,6 +32,7 @@ const Home = () => {
             User example{user?.firstName}
           </Text>
           <TouchableOpacity
+          onPress={() => router.push("/(root)/notifikasi")}
             className="justify-center items-center w-10 h-10 rounded-lg border border-gray-200 bg-white"
           >
             <Image source={icons.bell} className="w-6 h-6" />

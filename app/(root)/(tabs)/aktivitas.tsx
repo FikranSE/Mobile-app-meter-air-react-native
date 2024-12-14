@@ -1,4 +1,5 @@
-import React from "react"; // Import React here
+import React from "react"; 
+import {useRouter} from "expo-router";
 import {
   ActivityIndicator,
   FlatList,
@@ -36,6 +37,7 @@ const Aktivitas = () => {
     (item) => item.id.includes(searchQuery) || item.amount.includes(searchQuery)
   );
 
+  const router = useRouter();
   return (
     <SafeAreaView className="flex-1 bg-slate-100">
       {/* Header Pencarian dan Filter */}
@@ -43,7 +45,12 @@ const Aktivitas = () => {
       <FlatList
         data={filteredData}
         renderItem={({ item }) => (
-          <View className="mb-3 flex flex-row justify-between items-center p-4 bg-white shadow-lg rounded-xl">
+          <TouchableOpacity
+            onPress={() => {
+              router.push("/(root)/detail-transaksi");
+            }}
+            className="mb-3 flex flex-row justify-between items-center p-4 py-3 bg-white shadow-lg rounded-xl"
+          >
             <View className="flex justify-center items-center w-14 h-14 rounded-lg bg-slate-100">
               <Image
                 source={icons.teardrop}
@@ -60,12 +67,12 @@ const Aktivitas = () => {
             </View>
 
             <View className="flex flex-col justify-start items-end">
+              <Text className="text-xs text-gray-400">{item.date}</Text>
               <Text className="text-base font-semibold text-black">
                 {item.amount}
               </Text>
-              <Text className="text-xs text-gray-400">{item.date}</Text>
             </View>
-          </View>
+          </TouchableOpacity>
         )}
         keyExtractor={(item) => item.id.toString()}
         className="px-5"
@@ -103,7 +110,7 @@ const Aktivitas = () => {
               />
 
               {/* Tombol Filter */}
-              <TouchableOpacity className="ml-3 p-3 bg-white rounded-lg">
+              <TouchableOpacity className="ml-3 p-3 bg-white rounded-lg border border-gray-300">
                 <Image
                   source={icons.filter}
                   className="w-6 h-6"

@@ -236,7 +236,7 @@ const TransaksiLayout: React.FC<TransaksiLayoutProps> = ({ children }) => {
                 // Action when "Beli" is pressed
                 // You can add your logic here (e.g., validating inputs, processing payment)
               }}
-              className="mt-4 bg-sky-400 p-3 rounded-lg items-center"
+              className="mt-4 bg-sky-500 p-3 rounded-lg items-center"
             >
               <Text className="text-white text-lg font-semibold">Beli</Text>
             </TouchableOpacity>

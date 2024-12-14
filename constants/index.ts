@@ -31,6 +31,7 @@ import star from "@/assets/icons/star.png";
 import target from "@/assets/icons/target.png";
 import to from "@/assets/icons/to.png";
 import check from "@/assets/images/check.png";
+import check2 from "@/assets/images/check-2.png";
 import getStarted from "@/assets/images/get-started.png";
 import message from "@/assets/images/message.png";
 import noResult from "@/assets/images/no-result.png";
@@ -45,6 +46,8 @@ import berita1 from "@/assets/images/berita1.jpg";
 import berita2 from "@/assets/images/berita2.jpg";
 import profile1 from "@/assets/images/profile1.jpg";
 import banner1 from "@/assets/images/banner1.jpg";
+import bca from "@/assets/images/bca.png";
+import close2 from "@/assets/images/close2.png";
 
 export const images = {
   onboarding1,
@@ -53,6 +56,7 @@ export const images = {
   getStarted,
   signUpWater,
   check,
+  check2,
   noResult,
   message,
   waterDrop,
@@ -61,7 +65,9 @@ export const images = {
   berita1,
   berita2,
   profile1,
-  banner1
+  banner1,
+  bca,
+  close2
 };
 
 export const icons = {

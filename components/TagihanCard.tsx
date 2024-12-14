@@ -74,9 +74,9 @@ const TagihanCard = () => {
             {/* Tombol Bayar */}
             <View className="px-5 w-full mt-4">
               <TouchableOpacity
-                className="bg-sky-400 rounded-full py-2 items-center shadow-md"
+                className="bg-sky-500 rounded-full py-2 items-center shadow-md"
                 onPress={() => {
-                  router.push('/(root)/bayar-tagihan');
+                  router.push('/(root)/detail-tagihan');
                 }}
               >
                 <Text className="text-white font-bold text-lg">

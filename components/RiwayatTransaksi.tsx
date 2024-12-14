@@ -37,6 +37,9 @@ const RiwayatTransaksi = () => {
         {transactions.length > 3 ? (
           transactions.map((transaction, index) => (
             <TouchableOpacity
+            onPress={() => {
+              router.push("/(root)/detail-transaksi");
+            }}
               key={index}
               className="mb-3 flex flex-row justify-between items-center p-4 py-3 bg-white shadow-lg rounded-xl"
             >
