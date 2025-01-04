@@ -64,7 +64,11 @@ const NewsSection = () => {
     <View>
       <View className="flex-row justify-between items-center mb-4">
         <Text className="text-lg font-bold">Berita Terbaru</Text>
-        <TouchableOpacity>
+        <TouchableOpacity
+         onPress={() => {
+                      router.replace("/(root)/berita");
+                    }}
+        >
           <Text className="text-gray-500">Lihat semua</Text>
         </TouchableOpacity>
       </View>

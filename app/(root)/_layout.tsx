@@ -9,6 +9,7 @@ const Layout = () => {
       <Stack.Screen name="tagihan-page" options={{headerShown: false}}/>
       <Stack.Screen name="detail-transaksi" options={{headerShown: false}}/>
       <Stack.Screen name="notifikasi" options={{headerShown: false}}/>
+      <Stack.Screen name="berita" options={{headerShown: false}}/>
     </Stack>
   );
 };
