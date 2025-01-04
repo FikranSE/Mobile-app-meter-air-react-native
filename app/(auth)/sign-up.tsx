@@ -119,8 +119,8 @@ const SignUp = () => {
     labelStyle="text-sm"
   />
   <InputField
-    label="Nomor PDAM"
-    placeholder="Masukkan nomor PDAM"
+    label="ID PDAM"
+    placeholder="Masukkan ID PDAM"
     keyboardType="numeric"
     value={''}
     onChangeText={(value) => setForm({ ...form, pdamNumber: value })}
