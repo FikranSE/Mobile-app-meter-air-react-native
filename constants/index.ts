@@ -10,6 +10,7 @@ import eyecross from "@/assets/icons/eyecross.png";
 import google from "@/assets/icons/google.png";
 import home from "@/assets/icons/home.png";
 import list from "@/assets/icons/list.png";
+import pay from "@/assets/icons/pay.png";
 import lock from "@/assets/icons/lock.png";
 import drops from "@/assets/icons/drops.png";
 import phone from "@/assets/icons/phone.png";
@@ -48,6 +49,7 @@ import profile1 from "@/assets/images/profile1.jpg";
 import banner1 from "@/assets/images/banner1.jpg";
 import bca from "@/assets/images/bca.png";
 import close2 from "@/assets/images/close2.png";
+import kadar from "@/assets/images/kadar.png";
 
 export const images = {
   onboarding1,
@@ -67,7 +69,8 @@ export const images = {
   profile1,
   banner1,
   bca,
-  close2
+  close2,
+  kadar
 };
 
 export const icons = {
@@ -103,6 +106,7 @@ export const icons = {
   cancel,
   bell,
   warning,
+  pay
 };
 
 export const onboarding = [

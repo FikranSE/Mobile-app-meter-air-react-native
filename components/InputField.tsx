@@ -1,47 +1,51 @@
-import {
-  TextInput,
-  View,
-  Text,
-  Image,
-  KeyboardAvoidingView,
-  TouchableWithoutFeedback,
-  Keyboard,
-  Platform,
-} from "react-native";
+import { TextInput, View, Text, TouchableOpacity, KeyboardAvoidingView, TouchableWithoutFeedback, Keyboard, Platform } from "react-native";
+import { Feather } from "@expo/vector-icons";
+import { useState } from "react";
 
-import { InputFieldProps } from "@/types/type";
+interface InputFieldProps {
+  label?: string;
+  secureTextEntry?: boolean;
+  labelStyle?: string;
+  containerStyle?: string;
+  inputStyle?: string;
+  placeholder?: string;
+  value?: string;
+  onChangeText?: (text: string) => void;
+  keyboardType?: "default" | "email-address" | "numeric" | "phone-pad";
+  autoCapitalize?: "none" | "sentences" | "words" | "characters";
+  showPasswordToggle?: boolean;
+  [key: string]: any;
+}
 
 const InputField = ({
   label,
-  icon,
   secureTextEntry = false,
   labelStyle,
   containerStyle,
   inputStyle,
-  iconStyle,
-  className,
+  showPasswordToggle = false,
   ...props
 }: InputFieldProps) => {
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
+
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-    >
+    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined}>
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <View className="my-2 w-full">
-          <Text className={`text-lg font-JakartaSemiBold mb-3 ${labelStyle}`}>
-            {label}
-          </Text>
-          <View
-            className={`flex flex-row justify-start items-center relative bg-neutral-100 rounded-2xl border border-gray-300 focus:border-sky-400  ${containerStyle}`}
-          >
-            {icon && (
-              <Image source={icon} className={`w-6 h-6 ml-4 ${iconStyle}`} />
-            )}
+        <View className="w-full">
+          {label && <Text className={`text-base text-gray-700 mb-2 ${labelStyle}`}>{label}</Text>}
+          <View className={`flex-row items-center border border-gray-300 rounded-xl bg-white ${containerStyle}`}>
             <TextInput
-              className={`rounded-full p-4 font-JakartaSemiBold text-[15px] flex-1 ${inputStyle} text-left`}
-              secureTextEntry={secureTextEntry}
+              className={`flex-1 px-4 py-2 text-base ${inputStyle}`}
+              secureTextEntry={showPasswordToggle ? !isPasswordVisible : secureTextEntry}
+              placeholderTextColor="#9CA3AF"
+              autoCapitalize="none"
               {...props}
             />
+            {showPasswordToggle && (
+              <TouchableOpacity onPress={() => setIsPasswordVisible(!isPasswordVisible)} className="pr-4">
+                <Feather name={isPasswordVisible ? "eye" : "eye-off"} size={20} color="#6B7280" />
+              </TouchableOpacity>
+            )}
           </View>
         </View>
       </TouchableWithoutFeedback>

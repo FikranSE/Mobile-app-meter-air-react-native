@@ -1,231 +1,199 @@
-import { useSignUp } from "@clerk/clerk-expo";
-import { Link, router } from "expo-router";
 import { useState } from "react";
-import { Alert, Image, ScrollView, Text, View } from "react-native";
-import { ReactNativeModal } from "react-native-modal";
-
-import CustomButton from "@/components/CustomButton";
+import { View, Text, TouchableOpacity, ScrollView, Alert } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import { router, Link } from "expo-router";
 import InputField from "@/components/InputField";
-import OAuth from "@/components/OAuth";
-import { icons, images } from "@/constants";
-import { fetchAPI } from "@/lib/fetch";
 
 const SignUp = () => {
-  const { isLoaded, signUp, setActive } = useSignUp();
-  const [showSuccessModal, setShowSuccessModal] = useState(false);
-
   const [form, setForm] = useState({
-    name: "",
+    nama: "",
     email: "",
+    idPdam: "",
     password: "",
-  });
-  const [verification, setVerification] = useState({
-    state: "default",
-    error: "",
-    code: "",
+    confirmPassword: "",
+    telepon: "",
   });
 
-  const onSignUpPress = async () => {
-    if (!isLoaded) return;
-    try {
-      await signUp.create({
-        emailAddress: form.email,
-        password: form.password,
-      });
-      await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
-      setVerification({
-        ...verification,
-        state: "pending",
-      });
-    } catch (err: any) {
-      // See https://clerk.com/docs/custom-flows/error-handling
-      // for more info on error handling
-      console.log(JSON.stringify(err, null, 2));
-      Alert.alert("Error", err.errors[0].longMessage);
-    }
-  };
-  const onPressVerify = async () => {
-    if (!isLoaded) return;
-    try {
-      const completeSignUp = await signUp.attemptEmailAddressVerification({
-        code: verification.code,
-      });
-      if (completeSignUp.status === "complete") {
-        await fetchAPI("/(api)/user", {
-          method: "POST",
-          body: JSON.stringify({
-            name: form.name,
-            email: form.email,
-            clerkId: completeSignUp.createdUserId,
-          }),
-        });
-        await setActive({ session: completeSignUp.createdSessionId });
-        setVerification({
-          ...verification,
-          state: "success",
-        });
-      } else {
-        setVerification({
-          ...verification,
-          error: "Verification failed. Please try again.",
-          state: "failed",
-        });
+  const validateForm = () => {
+    // Check for empty fields
+    for (const [key, value] of Object.entries(form)) {
+      if (!value.trim()) {
+        Alert.alert("Error", `${key.charAt(0).toUpperCase() + key.slice(1)} tidak boleh kosong`);
+        return false;
       }
-    } catch (err: any) {
-      // See https://clerk.com/docs/custom-flows/error-handling
-      // for more info on error handling
-      setVerification({
-        ...verification,
-        error: err.errors[0].longMessage,
-        state: "failed",
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(form.email)) {
+      Alert.alert("Error", "Format email tidak valid");
+      return false;
+    }
+
+    // Validate ID PDAM length
+    if (form.idPdam.length !== 11) {
+      Alert.alert("Error", "ID PDAM harus 11 digit");
+      return false;
+    }
+
+    // Validate password match
+    if (form.password !== form.confirmPassword) {
+      Alert.alert("Error", "Password tidak sama");
+      return false;
+    }
+
+    // Validate phone number
+    if (form.telepon.length < 10 || form.telepon.length > 13) {
+      Alert.alert("Error", "Nomor telepon tidak valid");
+      return false;
+    }
+
+    return true;
+  };
+
+  const handleSignUp = async () => {
+    if (!validateForm()) return;
+
+    try {
+      // Here you would typically make an API call to register the user
+      // For now, we'll just simulate it and move to verification
+
+      // Navigate to verification screen with email (for displaying in verification screen)
+      router.push({
+        pathname: "/verification",
+        params: { email: form.email },
       });
+    } catch (error) {
+      Alert.alert("Error", "Terjadi kesalahan saat mendaftar. Silakan coba lagi.");
     }
   };
+
   return (
-    <ScrollView className="flex-1 bg-gray-100">
-      <View className="flex-1 bg-gray">
-    {/* header signup */}
-<View className="relative w-full h-[250px] bg-sky-400 rounded-bl-3xl rounded-br-3xl flex items-center justify-center mb-[-40px]">
-  {/* Logo Image */}
-  <Image source={images.logo} className="mt-5 w-16 h-16 absolute top-5 rounded-full" />
-
-  <View className="mt-10 flex items-center justify-center">
-    <Text className="text-2xl text-white font-semibold font-JakartaSemiBold">
-      Selamat Datang di Mata Air
-    </Text>
-    <Text className="text-center text-sm text-white">
-      Daftar untuk membuat akun
-    </Text>
-  </View>
-</View>
-
-{/* card form signup */}
-<View className="p-5 bg-white rounded-xl shadow-lg mt-[-5px] mx-5 z-10 mb-5">
-  <Text className="text-xl text-center font-semibold mb-5">Daftar</Text>
-
-  <InputField
-    label="Nama"
-    placeholder="Masukkan nama"
-    value={form.name}
-    onChangeText={(value) => setForm({ ...form, name: value })}
-    labelStyle="text-sm"
-  />
-  <InputField
-    label="Nomor HP"
-    placeholder="Masukkan nomor HP"
-    keyboardType="phone-pad"
-    value={''}
-    onChangeText={(value) => setForm({ ...form, phone: value })}
-    labelStyle="text-sm"
-  />
-  <InputField
-    label="ID PDAM"
-    placeholder="Masukkan ID PDAM"
-    keyboardType="numeric"
-    value={''}
-    onChangeText={(value) => setForm({ ...form, pdamNumber: value })}
-    labelStyle="text-sm"
-  />
-  <InputField
-    label="Email"
-    placeholder="Masukkan email"
-    textContentType="emailAddress"
-    value={form.email}
-    onChangeText={(value) => setForm({ ...form, email: value })}
-    labelStyle="text-sm"
-  />
-  <InputField
-    label="Kata Sandi"
-    placeholder="Masukkan kata sandi"
-    secureTextEntry={true}
-    textContentType="password"
-    value={form.password}
-    onChangeText={(value) => setForm({ ...form, password: value })}
-    labelStyle="text-sm"
-  />
-
-  <CustomButton
-    title="Daftar"
-    onPress={onSignUpPress}
-    className="mt-6"
-  />
-
-  <OAuth />
-
-  <Link
-    href="/sign-in"
-    className="text-lg text-center text-general-200 mt-10"
-  >
-    Sudah punya akun?{" "}
-    <Text className="text-sky-400">Masuk Sekarang</Text>
-  </Link>
-</View>
-
-
-
-
-
-        <ReactNativeModal
-          isVisible={verification.state === "pending"}
-          // onBackdropPress={() =>
-          //   setVerification({ ...verification, state: "default" })
-          // }
-          onModalHide={() => {
-            if (verification.state === "success") {
-              setShowSuccessModal(true);
-            }
-          }}
-        >
-          <View className="bg-white px-7 py-9 rounded-2xl min-h-[300px]">
-            <Text className="font-JakartaExtraBold text-2xl mb-2">
-              Verification
+    <ScrollView className="flex-1 bg-white " showsVerticalScrollIndicator={false}>
+      <View>
+        <LinearGradient colors={["#2181FF", "#004EBA"]} start={{ x: 1, y: 0 }} end={{ x: 0, y: 0 }} className="h-[30%] rounded-b-lg">
+          <View className="px-4 pt-16 pb-4">
+            <Text className="text-white text-3xl font-bold text-center">Selamat Datang di{"\n"}Mata Air</Text>
+            <Text className="text-white text-base font-light text-center mt-3 px-8 leading-5">
+              Silahkan masuk menggunakan akun anda{"\n"}untuk menggunakan layanan Mata Air
             </Text>
-            <Text className="font-Jakarta mb-5">
-              We've sent a verification code to {form.email}.
-            </Text>
-            <InputField
-              label={"Code"}
-              icon={icons.lock}
-              placeholder={"12345"}
-              value={verification.code}
-              keyboardType="numeric"
-              onChangeText={(code) =>
-                setVerification({ ...verification, code })
-              }
-            />
-            {verification.error && (
-              <Text className="text-red-500 text-sm mt-1">
-                {verification.error}
-              </Text>
-            )}
-            <CustomButton
-              title="Verify Email"
-              onPress={onPressVerify}
-              className="mt-5 bg-success-500"
-            />
           </View>
-        </ReactNativeModal>
-        <ReactNativeModal isVisible={showSuccessModal}>
-          <View className="bg-white px-7 py-9 rounded-2xl min-h-[300px]">
-            <Image
-              source={images.check}
-              className="w-[110px] h-[110px] mx-auto my-5"
-            />
-            <Text className="text-3xl font-JakartaBold text-center">
-              Verified
-            </Text>
-            <Text className="text-base text-gray-400 font-Jakarta text-center mt-2">
-              You have successfully verified your account.
-            </Text>
-            <CustomButton
-              title="Browse Home"
-              onPress={() => router.push(`/(root)/(tabs)/home`)}
-              className="mt-5"
-            />
+        </LinearGradient>
+        <View className="flex-1 px-5 -mt-[105px] mb-[100px]">
+          <View
+            className="bg-white rounded-xl px-5 pt-6 pb-8 mb-4"
+            style={{
+              shadowColor: "#000",
+              shadowOffset: { width: 5, height: 5 },
+              shadowOpacity: 0.3,
+              shadowRadius: 5,
+              elevation: 10,
+            }}>
+            <Text className="text-xl font-bold text-center mb-2">Daftar</Text>
+
+            {/* Nama Input */}
+            <View className="mb-2">
+              <Text className="text-base font-semibold mb-2">Nama</Text>
+              <InputField
+                placeholder="Nama"
+                value={form.nama}
+                onChangeText={(value) => setForm({ ...form, nama: value })}
+                containerStyle="bg-white shadow-sm"
+                inputStyle="text-base"
+              />
+            </View>
+
+            {/* Email Input */}
+            <View className="mb-2">
+              <Text className="text-base font-semibold mb-2">Email</Text>
+              <InputField
+                placeholder="Email@gmail.com"
+                value={form.email}
+                onChangeText={(value) => setForm({ ...form, email: value })}
+                containerStyle="bg-white shadow-sm"
+                inputStyle="text-base"
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+            </View>
+
+            {/* ID PDAM Input */}
+            <View className="mb-2">
+              <Text className="text-base font-semibold mb-2">ID PDAM</Text>
+              <InputField
+                placeholder="11 Digit (contoh: 12345678901)"
+                value={form.idPdam}
+                onChangeText={(value) => setForm({ ...form, idPdam: value })}
+                containerStyle="bg-white shadow-sm"
+                inputStyle="text-base"
+                keyboardType="numeric"
+                maxLength={11}
+              />
+            </View>
+
+            {/* Password Input */}
+            <View className="mb-2">
+              <Text className="text-base font-semibold mb-2">Password</Text>
+              <InputField
+                placeholder="Password"
+                value={form.password}
+                onChangeText={(value) => setForm({ ...form, password: value })}
+                containerStyle="bg-white shadow-sm"
+                inputStyle="text-base"
+                secureTextEntry
+                showPasswordToggle
+              />
+            </View>
+
+            {/* Confirm Password Input */}
+            <View className="mb-2">
+              <Text className="text-base font-semibold mb-2">Masukkan Ulang Password</Text>
+              <InputField
+                placeholder="Password"
+                value={form.confirmPassword}
+                onChangeText={(value) => setForm({ ...form, confirmPassword: value })}
+                containerStyle="bg-white shadow-sm"
+                inputStyle="text-base"
+                secureTextEntry
+                showPasswordToggle
+              />
+            </View>
+
+            {/* Phone Input */}
+            <View className="mb-6">
+              <Text className="text-base font-semibold mb-2">No. Telepon</Text>
+              <InputField
+                placeholder="Nomor Telepon"
+                value={form.telepon}
+                onChangeText={(value) => setForm({ ...form, telepon: value })}
+                containerStyle="bg-white shadow-sm"
+                inputStyle="text-base"
+                keyboardType="phone-pad"
+              />
+            </View>
+
+            {/* Sign Up Button */}
+            <TouchableOpacity onPress={handleSignUp} className="rounded-xl overflow-hidden">
+              <LinearGradient colors={["#77B0F5FF", "#2853D4FF"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} className="py-2">
+                <Text className="text-white text-lg font-semibold text-center">Daftar</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+
+            {/* Sign In Link */}
+            <View className="flex-row justify-center items-center mt-4 mb-2">
+              <Text className="text-gray-600 text-base">Sudah punya akun? </Text>
+              <Link href="/sign-in">
+                <Text className="text-blue-500 text-base">Masuk sekarang!</Text>
+              </Link>
+            </View>
+
+            {/* Copyright Text */}
+            <Text className="text-center text-gray-500 mt-2">© Mata Air 2025</Text>
           </View>
-        </ReactNativeModal>
+        </View>
       </View>
     </ScrollView>
   );
 };
+
 export default SignUp;
