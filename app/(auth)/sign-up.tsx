@@ -174,7 +174,7 @@ const SignUp = () => {
 
             {/* Sign Up Button */}
             <TouchableOpacity onPress={handleSignUp} className="rounded-xl overflow-hidden">
-              <LinearGradient colors={["#77B0F5FF", "#2853D4FF"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} className="py-2">
+              <LinearGradient colors={["#2181FF", "#004EBA"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} className="py-2">
                 <Text className="text-white text-lg font-semibold text-center">Daftar</Text>
               </LinearGradient>
             </TouchableOpacity>

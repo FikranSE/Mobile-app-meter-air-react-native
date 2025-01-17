@@ -1,10 +1,11 @@
-import { useState } from "react";
-import { ScrollView, View, Text, TouchableOpacity, Dimensions, Image, ImageBackground } from "react-native";
+import React, { useState, useRef } from "react";
+import { ScrollView, View, Text, TouchableOpacity, Dimensions, Image, ImageBackground, Alert, Animated } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import { LineChart } from "react-native-chart-kit";
-import { icons, images } from "@/constants"; 
+import { icons, images } from "@/constants";
+import * as Clipboard from "expo-clipboard"; 
 
 // Data untuk Chart
 const chartData = {
@@ -12,7 +13,7 @@ const chartData = {
   datasets: [
     {
       data: [50, 100, 80, 40, 90, 70, 110],
-      color: (opacity = 1) => `rgba(33, 129, 255, ${opacity})`, // Matches the blue color from the image
+      color: (opacity = 1) => `rgba(33, 129, 255, ${opacity})`,
       strokeWidth: 2,
     },
   ],
@@ -24,35 +25,138 @@ type CustomerType = "pascabayar" | "prabayar";
 const Home = () => {
   const [customerType, setCustomerType] = useState<CustomerType>("pascabayar");
   const screenWidth = Dimensions.get("window").width;
+  const [showAlert, setShowAlert] = useState(false);
+
   const chartConfig = {
-  backgroundColor: "#ffffff",
-  backgroundGradientFrom: "#ffffff",
-  backgroundGradientTo: "#ffffff",
-  decimalPlaces: 0,
-  color: (opacity = 1) => `rgba(33, 129, 255, ${opacity})`,
-  style: {
-    borderRadius: 16,
-  },
-  propsForDots: {
-    r: "3",
-    strokeWidth: "2",
-    stroke: "#2181FF",
-  },
-  propsForBackgroundLines: {
-    strokeDasharray: "", // Solid lines
-    stroke: "#E4E4E4",
-    strokeWidth: 1,
-  },
-  propsForLabels: {
-    fontSize: 12,
-    fontWeight: "400",
-  },
-  fillShadowGradient: "rgba(33, 129, 255, 0.2)",
-  fillShadowGradientOpacity: 0.3,
-};
+    backgroundColor: "#ffffff",
+    backgroundGradientFrom: "#ffffff",
+    backgroundGradientTo: "#ffffff",
+    decimalPlaces: 0,
+    color: (opacity = 1) => `rgba(33, 129, 255, ${opacity})`,
+    style: {
+      borderRadius: 16,
+    },
+    propsForDots: {
+      r: "4",
+      strokeWidth: "0",
+      stroke: "#2181FF",
+      fill: "#2181FF",
+    },
+    propsForBackgroundLines: {
+      stroke: "#E4E4E4",
+      strokeWidth: 1,
+      strokeDasharray: [0, 0],
+    },
+    propsForLabels: {
+      fontSize: 12,
+      fontWeight: "400",
+    },
+    fillShadowGradient: "rgba(33, 129, 255, 0.2)",
+    fillShadowGradientOpacity: 0.3,
+  };
+
+  // Animation values for alert
+  const slideAnim = useRef(new Animated.Value(-100)).current;
+  const opacity = useRef(new Animated.Value(0)).current;
+
+  const showAnimatedAlert = () => {
+    setShowAlert(true);
+    // Reset animation values
+    slideAnim.setValue(-100);
+    opacity.setValue(0);
+
+    // Start animations
+    Animated.parallel([
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.timing(opacity, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    // Auto hide after 3 seconds
+    setTimeout(() => {
+      hideAnimatedAlert();
+    }, 3000);
+  };
+
+  const hideAnimatedAlert = () => {
+    Animated.parallel([
+      Animated.timing(slideAnim, {
+        toValue: -100,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.timing(opacity, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      setShowAlert(false);
+    });
+  };
+
+  const handleCopyPDAMID = async () => {
+    try {
+      await Clipboard.setStringAsync("12345678901");
+      showAnimatedAlert();
+    } catch (error) {
+      Alert.alert("Error", "Gagal menyalin ID PDAM.");
+    }
+  };
+
+  const handleNavigation = () => {
+    if (customerType === "pascabayar") {
+      router.push("/(root)/detail-tagihan");
+    } else {
+      router.push("/(root)/beli-token");
+    }
+  };
 
   return (
     <ScrollView className="flex-1 bg-white ">
+      {/* Animated Alert */}
+      {showAlert && (
+        <Animated.View
+          style={{
+            position: "absolute",
+            top: 30,
+            left: 0,
+            right: 0,
+            zIndex: 999,
+            transform: [{ translateY: slideAnim }],
+            opacity: opacity,
+          }}>
+          <View
+            style={{
+              backgroundColor: "#E8F5E9",
+              padding: 16,
+              margin: 16,
+              borderRadius: 12,
+              flexDirection: "row",
+              alignItems: "center",
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.25,
+              shadowRadius: 3.84,
+              elevation: 5,
+            }}>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 16, fontWeight: "600", color: "#43A047", marginBottom: 2 }}>Berhasil</Text>
+              <Text style={{ fontSize: 14, color: "#43A047" }}>ID PDAM telah disalin ke clipboard</Text>
+            </View>
+            <TouchableOpacity onPress={hideAnimatedAlert}>
+              <Image source={icons.close} style={{ width: 14, height: 14, tintColor: "#43A047" }} />
+            </TouchableOpacity>
+          </View>
+        </Animated.View>
+      )}
       {/* Header */}
       <LinearGradient
         colors={["#004EBA", "#2181FF"]}
@@ -65,15 +169,17 @@ const Home = () => {
           shadowRadius: 5,
           elevation: 10,
         }}
-        className="h-[40%] rounded-b-lg shadow-xl">
-        <View className="flex-row justify-between items-center mt-5 p-5">
+        className="h-[30%] rounded-b-lg shadow-xl">
+        <View className="flex-row justify-between items-center mt-8 p-5">
           <View className="flex-row items-center space-x-2">
             <Image source={icons.pin} className="w-3.5 h-4" tintColor="white" />
-            <Text className="text-white text-lg font-base">Ampekale</Text>
+            <Text className="text-white text-md font-base">Ampekale</Text>
           </View>
-          <Feather name="mail" size={24} color="white" />
+          <TouchableOpacity>
+            <Image source={icons.envelope} className="w-5 h-5" tintColor="white" />
+          </TouchableOpacity>
         </View>
-        <Text className="text-white text-2xl font-bold text-center ">{customerType === "pascabayar" ? "Penggunaan Air" : "Air Tersisa"}</Text>
+        <Text className="text-white text-xl font-bold text-center ">{customerType === "pascabayar" ? "Penggunaan Air" : "Air Tersisa"}</Text>
         <View className="items-center my-5">
           <ImageBackground
             source={images.kadar}
@@ -117,15 +223,20 @@ const Home = () => {
             <Text className="text-white">ID PDAM</Text>
             <Text className="text-white">{customerType === "pascabayar" ? "Tagihan Bulan Ini" : "Pengeluaran Bulan Ini"}</Text>
           </View>
-          <View className="flex-row justify-between mt-3">
-            <Text className="text-white font-medium">{`12345678901`}</Text>
-            <Text className="text-white font-bold">{`Rp. 35.000,-`}</Text>
+          <View className="flex-row justify-between mt-3 items-center">
+            <TouchableOpacity className="flex-row items-center" onPress={handleCopyPDAMID} activeOpacity={0.7}>
+              <Text className="text-white text-lg font-medium">{`12345678901`}</Text>
+              <Image source={icons.copy} className="w-4 h-4 ml-2" tintColor="white" />
+            </TouchableOpacity>
+            <Text className="text-white text-lg font-bold">{`Rp. 35.000,-`}</Text>
           </View>
         </View>
 
         <View className="flex-row justify-between items-center mt-5">
           <Text className="text-white opacity-70 font-bold mr-4">• {customerType === "pascabayar" ? "Pascabayar" : "Prabayar"}</Text>
-          <TouchableOpacity onPress={() => router.push("/(root)/detail-tagihan")} className="rounded-full">
+          <TouchableOpacity
+            onPress={handleNavigation} // Updated onPress handler
+            className="rounded-full">
             <LinearGradient
               colors={["#8CC0FFFF", "#0263FFFF"]}
               start={{ x: 0, y: 0 }}
@@ -145,29 +256,30 @@ const Home = () => {
       </LinearGradient>
 
       {/* Riwayat Penggunaan Air */}
-      <View className="p-5 mb-[250px]">
-        <Text className="text-black text-lg font-bold">Riwayat Penggunaan Air {">"}</Text>
-        <Text className="text-black mt-1 mb-4">Jan 2025</Text>
-
-        <LineChart
-          data={chartData}
-          width={screenWidth - 40}
-          height={220}
-          chartConfig={chartConfig}
-          bezier
-          style={{
-            marginVertical: 8,
-            borderRadius: 16,
-          }}
-          withHorizontalLabels={true}
-          withVerticalLabels={true}
-          withInnerLines={true}
-          withOuterLines={true}
-          withVerticalLines={true}
-          withHorizontalLines={true}
-          getDotColor={() => "#2181FF"}
-          segments={4}
-        />
+      <View className="mb-[250px]">
+        <View className="ml-7 mt-7">
+          <Text className="text-black text-lg font-bold">Riwayat Penggunaan Air {">"}</Text>
+          <Text className="text-black mt-1 mb-4">Jan 2025</Text>
+        </View>
+        <View>
+          <LineChart
+            data={chartData}
+            width={screenWidth - 30}
+            height={220}
+            chartConfig={chartConfig}
+            bezier
+            style={{
+              marginVertical: 8,
+              borderRadius: 16,
+            }}
+            withHorizontalLabels={true}
+            withVerticalLabels={true} // Enable vertical labels
+            withInnerLines={true} // Enable inner lines
+            withOuterLines={true} // Enable outer lines
+            getDotColor={() => "#2181FF"}
+            segments={4}
+          />
+        </View>
       </View>
     </ScrollView>
   );

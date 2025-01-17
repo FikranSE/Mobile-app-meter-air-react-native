@@ -1,91 +1,72 @@
+// _layout.tsx
+import React from "react";
 import { Tabs } from "expo-router";
-import { Image, ImageSourcePropType, View } from "react-native";
-
+import { LinearGradient } from "expo-linear-gradient";
+import TabIcon from "@/components/TabIcon"; // Adjust the import path as needed
 import { icons } from "@/constants";
-
-const TabIcon = ({
-  source,
-  focused,
-}: {
-  source: ImageSourcePropType;
-  focused: boolean;
-}) => (
-  <View
-    className={`flex flex-row justify-center items-center rounded-full ${focused ? "bg-general-300" : ""}`}
-  >
-    <View
-      className={`rounded-full w-12 h-12 items-center justify-center ${focused ? "bg-slate-100" : ""}`}
-    >
-      <Image
-        source={source}
-        tintColor="#38bdf8"
-        resizeMode="contain"
-        className="w-7 h-7"
-      />
-    </View>
-  </View>
-);
 
 export default function Layout() {
   return (
     <Tabs
-      initialRouteName="index"
+      initialRouteName="home"
       screenOptions={{
-        tabBarActiveTintColor: "white",
-        tabBarInactiveTintColor: "white",
+        // Disable default tab labels
         tabBarShowLabel: false,
+        // Style the tab bar
         tabBarStyle: {
-          backgroundColor: "#ffffff",
-          borderRadius: 0,
-          paddingBottom: 0, // ios only
-          overflow: "hidden",
-          height: 78,
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          flexDirection: "row",
+          height: 65,
+          paddingVertical: 10,
+          paddingHorizontal: 20,
+          borderTopWidth: 0,
           position: "absolute",
+          bottom: 0,
+          left: 0,
+          right: 0,
+          elevation: 0,
         },
-      }}
-    >
+        // Set a gradient background for the tab bar
+        tabBarBackground: () => (
+          <LinearGradient
+            colors={["#004EBA", "#2181FF"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={{
+              position: "absolute",
+              left: 0,
+              right: 0,
+              top: 0,
+              bottom: 0,
+            }}
+          />
+        ),
+      }}>
+      {/* Home Tab */}
       <Tabs.Screen
         name="home"
         options={{
-          title: "Home",
+          title: "Halaman Utama",
           headerShown: false,
-          tabBarIcon: ({ focused }) => (
-            <TabIcon source={icons.home} focused={focused} />
-          ),
+          tabBarIcon: ({ focused }) => <TabIcon source={icons.home} focused={focused} label="Halaman Utama" />,
         }}
       />
+
+      {/* Aktivitas Tab */}
       <Tabs.Screen
         name="aktivitas"
         options={{
-          title: "Aktivitas",
+          title: "Riwayat",
           headerShown: false,
-          tabBarIcon: ({ focused }) => (
-            <TabIcon source={icons.list} focused={focused} />
-          ),
+          tabBarIcon: ({ focused }) => <TabIcon source={icons.list} focused={focused} label="Riwayat" />,
         }}
       />
-      <Tabs.Screen
-        name="chat"
-        options={{
-          title: "Chat",
-          headerShown: false,
-          tabBarIcon: ({ focused }) => (
-            <TabIcon source={icons.chat} focused={focused} />
-          ),
-        }}
-      />
+
+      {/* Profile Tab */}
       <Tabs.Screen
         name="profile"
         options={{
-          title: "Profile",
+          title: "Pengaturan",
           headerShown: false,
-          tabBarIcon: ({ focused }) => (
-            <TabIcon source={icons.profile} focused={focused} />
-          ),
+          tabBarIcon: ({ focused }) => <TabIcon source={icons.setting} focused={focused} label="Pengaturan" />,
         }}
       />
     </Tabs>

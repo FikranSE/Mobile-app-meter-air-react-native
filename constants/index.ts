@@ -10,6 +10,10 @@ import eyecross from "@/assets/icons/eyecross.png";
 import google from "@/assets/icons/google.png";
 import home from "@/assets/icons/home.png";
 import list from "@/assets/icons/list.png";
+import setting from "@/assets/icons/setting.png";
+import envelope from "@/assets/icons/envelope.png";
+import question from "@/assets/icons/question.png";
+import copy from "@/assets/icons/copy.png";
 import pay from "@/assets/icons/pay.png";
 import lock from "@/assets/icons/lock.png";
 import drops from "@/assets/icons/drops.png";
@@ -106,7 +110,11 @@ export const icons = {
   cancel,
   bell,
   warning,
-  pay
+  pay,
+  copy,
+  setting,
+  question,
+  envelope
 };
 
 export const onboarding = [
