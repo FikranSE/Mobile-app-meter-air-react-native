@@ -1,129 +1,123 @@
-import React from "react"; 
-import {useRouter} from "expo-router";
-import {
-  ActivityIndicator,
-  FlatList,
-  Image,
-  Text,
-  TextInput,
-  View,
-  TouchableOpacity,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { images, icons } from "@/constants";
+import React, { useState } from "react";
+import { View, Text, TouchableOpacity, Image, ScrollView } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import { router } from "expo-router";
+import { icons } from "@/constants";
 
-const dataRiwayat = [
-  { id: "001", date: "Jumat, 22 Nov 2024", amount: "Rp.34.500" },
-  { id: "002", date: "Sabtu, 23 Nov 2024", amount: "Rp.45.000" },
-  { id: "003", date: "Minggu, 24 Nov 2024", amount: "Rp.50.000" },
-  { id: "004", date: "Senin, 25 Nov 2024", amount: "Rp.60.000" },
-];
+const TransactionHistory = () => {
+  const [selectedFilter, setSelectedFilter] = useState("Semua");
 
-const Aktivitas = () => {
-  const loading = false;
-  const error = false;
-  const data = dataRiwayat;
+  const transactions = [
+    {
+      type: "Token Air",
+      customer: "Sumarno",
+      date: "7 Januari 2025",
+      amount: "Rp. 50.000,-",
+      status: "Sukses",
+    },
+    {
+      type: "Tagihan Air",
+      customer: "Sumarno",
+      date: "5 Januari 2025",
+      amount: "Rp. 62.500,-",
+      status: "Gagal",
+    },
+    {
+      type: "Token Air",
+      customer: "Sumarno",
+      date: "1 Januari 2025",
+      amount: "Rp. 25.000,-",
+      status: "Sukses",
+    },
+    {
+      type: "Token Air",
+      customer: "Sumarno",
+      date: "29 Desember 2024",
+      amount: "Rp. 50.000,-",
+      status: "Sukses",
+    },
+    {
+      type: "Token Air",
+      customer: "Sumarno",
+      date: "20 Desember 2024",
+      amount: "Rp. 75.000,-",
+      status: "Gagal",
+    },
+  ];
 
-  // State untuk search query
-  const [searchQuery, setSearchQuery] = React.useState("");
+  const filteredTransactions =
+    selectedFilter === "Semua"
+      ? transactions
+      : transactions.filter((t) => (selectedFilter === "Sukses" ? t.status === "Sukses" : t.status === "Gagal"));
 
-  // Fungsi untuk menangani filter
-  const handleSearch = (text: string) => {
-    setSearchQuery(text);
-  };
-
-  // Filter data berdasarkan query pencarian
-  const filteredData = data.filter(
-    (item) => item.id.includes(searchQuery) || item.amount.includes(searchQuery)
-  );
-
-  const router = useRouter();
   return (
-    <SafeAreaView className="flex-1 bg-slate-100">
-      {/* Header Pencarian dan Filter */}
-
-      <FlatList
-        data={filteredData}
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            onPress={() => {
-              router.push("/(root)/detail-transaksi");
-            }}
-            className="mb-3 flex flex-row justify-between items-center p-4 py-3 bg-white shadow-lg rounded-xl"
-          >
-            <View className="flex justify-center items-center w-14 h-14 rounded-lg bg-slate-100">
-              <Image
-                source={icons.teardrop}
-                className="w-10 h-10"
-                tintColor="#0ea5e9"
-              />
-            </View>
-
-            <View className="flex-1 mx-2 flex-col justify-start">
-              <Text className="font-semibold text-base text-gray-800">
-                Tagihan PDAM
-              </Text>
-              <Text className="text-sm text-gray-500">ID {item.id}</Text>
-            </View>
-
-            <View className="flex flex-col justify-start items-end">
-              <Text className="text-xs text-gray-400">{item.date}</Text>
-              <Text className="text-base font-semibold text-black">
-                {item.amount}
-              </Text>
-            </View>
-          </TouchableOpacity>
-        )}
-        keyExtractor={(item) => item.id.toString()}
-        className="px-5"
-        keyboardShouldPersistTaps="handled"
-        contentContainerStyle={{
-          paddingBottom: 100,
+    <View className="flex-1 bg-white">
+      {/* Header */}
+      <LinearGradient
+        style={{
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.25,
+          shadowRadius: 2.84,
+          elevation: 5,
         }}
-        ListEmptyComponent={() => (
-          <View className="flex flex-col items-center justify-center">
-            {!loading ? (
-              <>
-                <Image
-                  source={images.noResult}
-                  className="w-40 h-40"
-                  alt="Tidak ada riwayat transaksi"
-                  resizeMode="contain"
-                />
-                <Text className="text-sm">Tidak ada riwayat transaksi</Text>
-              </>
-            ) : (
-              <ActivityIndicator size="small" color="#000" />
-            )}
-          </View>
-        )}
-        ListHeaderComponent={
-          <View>
-            <Text className="text-2xl font-JakartaBold my-5">Aktifitas</Text>
-            <View className="flex-row items-center justify-between py-4">
-              {/* TextInput Pencarian */}
-              <TextInput
-                value={searchQuery}
-                onChangeText={handleSearch}
-                placeholder="Cari ID atau Jumlah"
-                className="flex-1 border border-gray-300 rounded-lg p-3 bg-white"
-              />
+        colors={["#004EBA", "#2181FF"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        className="pt-12 h-[15%]  pb-5 px-4 rounded-b-xl justify-end">
+        <View className="flex-row justify-between items-center ">
+          <Text className="text-white text-xl font-bold">Riwayat Transaksi</Text>
+          <TouchableOpacity>
+            <Image source={icons.question} className="w-5 h-5" tintColor="white" />
+          </TouchableOpacity>
+        </View>
+      </LinearGradient>
 
-              {/* Tombol Filter */}
-              <TouchableOpacity className="ml-3 p-3 bg-white rounded-lg border border-gray-300">
-                <Image
-                  source={icons.filter}
-                  className="w-6 h-6"
-                  resizeMode="contain"
-                  tintColor="#a1a1aa"
-                />
-              </TouchableOpacity>
+      {/* Filter Tabs */}
+      <View className="flex-row space-x-3 px-4 mt-4 mb-2">
+        {["Sukses", "Gagal", "Semua"].map((filter) => (
+          <TouchableOpacity
+            key={filter}
+            onPress={() => setSelectedFilter(filter)}
+            className={`px-4 py-2 rounded-full border ${selectedFilter === filter ? "bg-blue-500 border-blue-500" : "bg-white border-gray-300"}`}>
+            <Text className={`${selectedFilter === filter ? "text-white" : "text-gray-600"} font-medium`}>{filter}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      {/* Transaction List */}
+      <ScrollView className="flex-1 px-4">
+        {filteredTransactions.map((transaction, index) => (
+          <View key={index} className="bg-white rounded-xl p-4 mb-3 border border-gray-100 shadow-sm">
+            <View className="flex-row justify-between items-start">
+              <View className="flex-row items-center space-x-3">
+                {transaction.status === "Sukses" ? (
+                  <View className="w-8">
+                    <Image source={icons.checkmark} className="w-6 h-6" tintColor="#22C55E" />
+                  </View>
+                ) : (
+                  <View className="w-8">
+                    <Image source={icons.error} className="w-6 h-6" tintColor="#EF4444" />
+                  </View>
+                )}
+                <View>
+                  <Text className="text-lg font-semibold">{transaction.type}</Text>
+                  <Text className="text-gray-600">{transaction.customer}</Text>
+                </View>
+              </View>
+              <View className="items-end">
+                <Text className="text-gray-600 mb-1">{transaction.date}</Text>
+                <Text className="text-lg font-bold">{transaction.amount}</Text>
+                <TouchableOpacity className={`rounded-lg w-24 py-2 mt-2 ${transaction.status === "Sukses" ? "bg-green-700" : "bg-red-700"}`}>
+                  <Text className="text-white text-center font-base text-sm">{transaction.status === "Sukses" ? "Beli Lagi" : "Laporkan"}</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
-        }
-      />
-    </SafeAreaView>
+        ))}
+      </ScrollView>
+    </View>
   );
 };
 
-export default Aktivitas;
+export default TransactionHistory;

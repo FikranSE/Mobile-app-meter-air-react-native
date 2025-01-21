@@ -9,7 +9,7 @@ const PaymentStatus = () => {
   const [showAlert, setShowAlert] = useState(false);
   const transactionData = {
     metodePembayaran: "QRIS",
-    status: "Berhasil", // Ubah ke "Gagal" untuk pengujian status gagal
+    status: "Gagal", // Ubah ke "Gagal" untuk pengujian status gagal
     waktu: "10:30 AM",
     tanggal: "5 Januari 2025",
     idTransaksi: "a6e4a073171d4479811d68",
@@ -226,7 +226,7 @@ const PaymentStatus = () => {
           <Text className="text-xl font-bold">{transactionData.rincian.total}</Text>
         </View>
         {/* Buttons */}
-        <View className="flex-col space-y-2 mt-7">
+        <View className="flex-col space-y-2 mt-3">
           <TouchableOpacity onPress={() => router.replace("/(root)/detail-transaksi")}>
             <LinearGradient colors={["#F93B3BFF", "#9F0000FF"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} className="rounded-lg py-2">
               <Text className="text-white text-base font-semibold text-center">Laporkan Masalah</Text>

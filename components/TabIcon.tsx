@@ -16,7 +16,7 @@ const TabIcon: React.FC<TabIconProps> = ({ source, focused, label }) => (
       <Image source={source} tintColor={focused ? "#2181FF" : "white"} resizeMode="contain" className="w-6 h-5" />
     </View>
     {/* Label */}
-    <Text className={`text-xs ${focused ? "text-[#2181FF]" : "text-white"}`}>{label}</Text>
+    <Text className={`text-xs ${focused ? "text-[#ffffff]" : "text-white"}`}>{label}</Text>
   </View>
 );
 

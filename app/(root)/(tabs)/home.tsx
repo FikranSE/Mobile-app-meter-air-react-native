@@ -23,7 +23,7 @@ const chartData = {
 type CustomerType = "pascabayar" | "prabayar";
 
 const Home = () => {
-  const [customerType, setCustomerType] = useState<CustomerType>("pascabayar");
+  const [customerType, setCustomerType] = useState<CustomerType>("prabayar");
   const screenWidth = Dimensions.get("window").width;
   const [showAlert, setShowAlert] = useState(false);
 
@@ -54,6 +54,8 @@ const Home = () => {
     fillShadowGradient: "rgba(33, 129, 255, 0.2)",
     fillShadowGradientOpacity: 0.3,
   };
+
+  const notificationCount = 3;
 
   // Animation values for alert
   const slideAnim = useRef(new Animated.Value(-100)).current;
@@ -119,6 +121,8 @@ const Home = () => {
     }
   };
 
+
+
   return (
     <ScrollView className="flex-1 bg-white ">
       {/* Animated Alert */}
@@ -175,11 +179,18 @@ const Home = () => {
             <Image source={icons.pin} className="w-3.5 h-4" tintColor="white" />
             <Text className="text-white text-md font-base">Ampekale</Text>
           </View>
-          <TouchableOpacity>
-            <Image source={icons.envelope} className="w-5 h-5" tintColor="white" />
+          <TouchableOpacity onPress={() => router.push("/(root)/notifikasi")}>
+            <View className="relative">
+              <Image source={icons.envelope} className="w-5 h-5" tintColor="white" />
+              {notificationCount > 0 && (
+                <View className="absolute -top-1 -right-1 bg-orange-500 rounded-full w-3 h-3 flex items-center justify-center">
+                  <Text className="text-white text-xs"></Text>
+                </View>
+              )}
+            </View>
           </TouchableOpacity>
         </View>
-        <Text className="text-white text-xl font-bold text-center ">{customerType === "pascabayar" ? "Penggunaan Air" : "Air Tersisa"}</Text>
+        <Text className="text-white text-xl font-bold text-center">{customerType === "pascabayar" ? "Penggunaan Air" : "Air Tersisa"}</Text>
         <View className="items-center my-5">
           <ImageBackground
             source={images.kadar}

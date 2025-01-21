@@ -4,12 +4,16 @@ import backArrow from "@/assets/icons/back-arrow.png";
 import chat from "@/assets/icons/chat.png";
 import checkmark from "@/assets/icons/check.png";
 import close from "@/assets/icons/close.png";
+import error from "@/assets/icons/error.png";
 import dollar from "@/assets/icons/dollar.png";
 import email from "@/assets/icons/email.png";
 import eyecross from "@/assets/icons/eyecross.png";
 import google from "@/assets/icons/google.png";
+import send from "@/assets/icons/send.png";
 import home from "@/assets/icons/home.png";
+import add from "@/assets/icons/add.png";
 import list from "@/assets/icons/list.png";
+import account from "@/assets/icons/account.png";
 import setting from "@/assets/icons/setting.png";
 import envelope from "@/assets/icons/envelope.png";
 import question from "@/assets/icons/question.png";
@@ -114,7 +118,11 @@ export const icons = {
   copy,
   setting,
   question,
-  envelope
+  envelope,
+  error,
+  add,
+  send,
+  account
 };
 
 export const onboarding = [

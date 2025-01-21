@@ -1,84 +1,100 @@
-import { useState } from "react";
-import {
-  Image,
-  FlatList,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-  ScrollView,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { images } from "@/constants"; // Path gambar kosong
+import React, { useState } from "react";
+import { View, Text, TouchableOpacity, Image, ScrollView, TextInput } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+// Misalnya Anda punya ikon sendiri:
+import { icons } from "@/constants";
+import { router } from "expo-router";
 
-const initialMessages = [
-  {
-    id: 1,
-    sender: "admin",
-    text: "Selamat datang! Ada yang bisa kami bantu?",
-    time: "10:00 AM",
-  },
-  {
-    id: 2,
-    sender: "customer",
-    text: "Halo Admin, saya ingin menanyakan tagihan saya.",
-    time: "10:02 AM",
-  },
-  {
-    id: 3,
-    sender: "admin",
-    text: "Tentu, bisa diinformasikan ID pelanggan Anda?",
-    time: "10:05 AM",
-  },
-  {
-    id: 4,
-    sender: "customer",
-    text: "ID Pelanggan saya 2836432718.",
-    time: "10:07 AM",
-  },
-];
+const ChatScreen = () => {
+  // Contoh data percakapan
+  const conversation = [
+    {
+      id: 1,
+      sender: "cs",
+      text: "Apakah masih ada yang perlu kami bantu pak?",
+      time: "8 Jan 15.45",
+    },
+    {
+      id: 2,
+      sender: "user",
+      text: "Sudah cukup untuk saat ini. Terima kasih banyak",
+      time: "8 Jan 15.50",
+    },
+    {
+      id: 3,
+      type: "divider",
+      text: "Today 9.00",
+    },
+    {
+      id: 4,
+      sender: "user",
+      text: "Halo kak selamat pagi. Saya mengalami kendala lagi.",
+      time: "9.00",
+    },
+    {
+      id: 5,
+      sender: "cs",
+      text: "Halo pak selamat pagi. Dengan cs Sumarni, apa ada yang bisa saya bantu?",
+      time: "9.01",
+    },
+    {
+      id: 6,
+      sender: "user",
+      text: "Meteran saya tidak terbaca lagi.",
+      time: "9.02",
+    },
+    {
+      id: 7,
+      sender: "cs",
+      text: "Baik pak. Bisa dibantu dengan ID PDAM bapak dan alamat bapak saat ini?",
+      time: "9.03",
+    },
+    {
+      id: 8,
+      sender: "user",
+      text: "Nama saya Sumarno. Alamat saya saat ini berada di Ampekale.",
+      time: "9.04",
+    },
+  ];
 
-const Chat = () => {
-  const [messages, setMessages] = useState(initialMessages);
-  const [newMessage, setNewMessage] = useState("");
+  // Fungsi untuk menampilkan bubble chat
+  const ChatBubble = ({ sender, text, time, type, dividerText }) => {
+    // Jika ini tipe "divider", tampilkan teks di tengah (misalnya 'Today 9.00')
+    if (type === "divider") {
+      return (
+        <View style={{ alignItems: "center", marginVertical: 8 }}>
+          <Text style={{ color: "#6b7280", fontSize: 12 }}>{dividerText}</Text>
+        </View>
+      );
+    }
 
-  const sendMessage = () => {
-    if (newMessage.trim() === "") return;
-
-    const newMsg = {
-      id: messages.length + 1,
-      sender: "customer",
-      text: newMessage,
-      time: new Date().toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
-    };
-
-    setMessages([...messages, newMsg]);
-    setNewMessage(""); // Kosongkan input setelah mengirim pesan
-  };
-
-  const renderMessage = ({ item }) => {
-    const isAdmin = item.sender === "admin";
+    const isUser = sender === "user";
     return (
       <View
-        className={`flex flex-row ${isAdmin ? "justify-start" : "justify-end"} mb-4`}
-      >
+        style={{
+          flexDirection: "row",
+          justifyContent: isUser ? "flex-end" : "flex-start",
+          marginVertical: 4,
+          paddingHorizontal: 8,
+        }}>
+        {/* Bubble */}
         <View
-          className={`max-w-[70%] px-4 py-2 rounded-lg shadow-sm ${
-            isAdmin ? "bg-white" : "bg-sky-500"
-          }`}
-        >
+          style={{
+            maxWidth: "75%",
+            backgroundColor: isUser ? "#2181FF" : "#f1f5f9",
+            paddingVertical: 8,
+            paddingHorizontal: 12,
+            borderRadius: 12,
+          }}>
+          <Text style={{ color: isUser ? "#fff" : "#111827" }}>{text}</Text>
           <Text
-            className={`${isAdmin ? "text-gray-700" : "text-white"} font-medium`}
-          >
-            {item.text}
-          </Text>
-          <Text
-            className={`text-xs mt-1 ${isAdmin ? "text-gray-500" : "text-gray-200"} self-end`}
-          >
-            {item.time}
+            style={{
+              color: isUser ? "rgba(255,255,255,0.8)" : "#6b7280",
+              fontSize: 10,
+              marginTop: 4,
+              textAlign: isUser ? "right" : "left",
+            }}>
+            {time}
           </Text>
         </View>
       </View>
@@ -86,41 +102,95 @@ const Chat = () => {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-slate-100 p-5">
-      <Text className="text-2xl font-JakartaBold mb-4">Chat</Text>
+    <View style={{ flex: 1, backgroundColor: "white" }}>
+      {/* Header */}
+      <LinearGradient
+        colors={["#004EBA", "#2181FF"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={{
+          paddingTop: 50,
+          height: 120,
+          paddingBottom: 30,
+          paddingHorizontal: 16,
+          borderBottomLeftRadius: 12,
+          borderBottomRightRadius: 12,
+          justifyContent: "flex-end",
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.25,
+          shadowRadius: 3.84,
+          elevation: 5,
+        }}>
+        <View style={{ flexDirection: "row", alignItems: "center" }}>
+          <TouchableOpacity onPress={() => router.back()}>
+            <Image source={icons.backArrow} style={{ width: 24, height: 24, tintColor: "#fff" }} />
+          </TouchableOpacity>
+          <Text style={{ color: "#fff", fontSize: 20, fontWeight: "bold", marginLeft: 12 }}>Ticket #1435</Text>
+        </View>
+      </LinearGradient>
 
-      {/* ScrollView untuk menampilkan pesan yang bisa digulir */}
-      <ScrollView
-        contentContainerStyle={{ flexGrow: 1 }}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Jika ada pesan */}
-        <FlatList
-          data={messages}
-          keyExtractor={(item) => item.id.toString()}
-          renderItem={renderMessage}
-          contentContainerStyle={{ paddingBottom: 60 }} // Memberikan ruang untuk input
-        />
+      {/* Daftar percakapan */}
+      <ScrollView style={{ flex: 1, marginTop: 8 }}>
+        {conversation.map((msg) =>
+          msg.type === "divider" ? (
+            <ChatBubble key={msg.id} type="divider" dividerText={msg.text} />
+          ) : (
+            <ChatBubble key={msg.id} sender={msg.sender} text={msg.text} time={msg.time} />
+          )
+        )}
       </ScrollView>
 
-      {/* Input Pesan tetap tampil di bawah, baik ada pesan atau tidak */}
-      <View className="flex-row items-center bg-white p-3 rounded-full shadow-md mt-3">
+      {/* Input pesan di bagian bawah */}
+      <LinearGradient
+        colors={["#004EBA", "#2181FF"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          paddingVertical: 14,
+          paddingHorizontal: 8,
+          borderTopWidth: 1,
+          borderTopColor: "#e5e7eb",
+        }}>
+        <TouchableOpacity
+          style={{
+            borderRadius: 24,
+            padding: 10,
+          }}>
+          <Image
+            source={icons.add}
+            style={{
+              width: 20,
+              height: 20,
+              tintColor: "#fff",
+            }}
+          />
+        </TouchableOpacity>
         <TextInput
-          className="flex-1 text-base text-gray-700 px-3"
-          placeholder="Ketik pesan..."
-          value={newMessage}
-          onChangeText={setNewMessage}
+          placeholder="Tulis pesan..."
+          style={{
+            flex: 1,
+            backgroundColor: "#f3f4f6",
+            paddingVertical: 8,
+            paddingHorizontal: 12,
+            borderRadius: 24,
+            marginRight: 8,
+            marginLeft: 8,
+          }}
         />
         <TouchableOpacity
-          onPress={sendMessage}
-          className="bg-sky-500 px-4 py-2 rounded-full"
-        >
-          <Text className="text-white font-bold">Kirim</Text>
+          style={{
+            backgroundColor: "#1C6BD2FF",
+            borderRadius: 24,
+            padding: 10,
+          }}>
+          <Image source={icons.send} style={{ width: 20, height: 20, tintColor: "#fff" }} />
         </TouchableOpacity>
-      </View>
-    </SafeAreaView>
+      </LinearGradient>
+    </View>
   );
 };
 
-export default Chat;
+export default ChatScreen;
