@@ -1,21 +1,44 @@
 import { Link, router } from "expo-router";
 import { useState } from "react";
-import { ScrollView, Text, View, TouchableOpacity, Dimensions } from "react-native";
-import { Feather } from "@expo/vector-icons";
+import { View, Text, TouchableOpacity } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-
-import CustomButton from "@/components/CustomButton";
 import InputField from "@/components/InputField";
+import { generateToken, loginAccount } from "@/lib/services/authService";
+import { saveToken } from "@/store/authStorage";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const SignIn = () => {
-  const [form, setForm] = useState({
-    email: "",
-    password: "",
-  });
+export default function SignIn() {
+  const [form, setForm] = useState({ emailOrUsername: "", password: "" });
 
-  const onSignInPress = () => {
-    router.replace("/(root)/(tabs)/home");
-  };
+  async function onSignInPress() {
+    try {
+      // Step 1: Generate the access token
+      const accessToken = await generateToken();
+
+      // Step 2: Get the data-token from login
+      const userToken = await loginAccount(accessToken, form.emailOrUsername, form.password);
+
+      // Step 3: Save the token and user credentials for future use
+      await saveToken(userToken);
+      await AsyncStorage.setItem("username", form.emailOrUsername);
+      await AsyncStorage.setItem("password", form.password);
+      await AsyncStorage.setItem("access_token", accessToken);
+
+      // Step 4: Check if user has PIN or not
+      const pinStatus = await AsyncStorage.getItem("pinTransactionStatus");
+
+      if (pinStatus) {
+        // If the user has already created the PIN, navigate to home
+        router.replace("/home");
+      } else {
+        // If the user hasn't created PIN, navigate to transaction-pin page
+        router.replace("/transaction-pin");
+      }
+    } catch (error) {
+      console.error("Login error:", error);
+      alert("Terjadi kesalahan saat login.");
+    }
+  }
 
   return (
     <View className="flex-1 bg-white">
@@ -23,13 +46,7 @@ const SignIn = () => {
         colors={["#2181FF", "#004EBA"]}
         start={{ x: 1, y: 0 }}
         end={{ x: 0, y: 0 }}
-        style={{
-          shadowColor: "#000",
-          shadowOffset: { width: 5, height: 5 },
-          shadowOpacity: 0.3,
-          shadowRadius: 5,
-          elevation: 10,
-        }}
+        style={{ shadowColor: "#000", shadowOffset: { width: 5, height: 5 }, shadowOpacity: 0.3, shadowRadius: 5, elevation: 10 }}
         className="h-[40%] rounded-b-lg shadow-xl">
         <View className="px-4 pt-16 pb-4">
           <Text className="text-white text-3xl font-bold text-center">Selamat Datang di {"\n"}Mata Air</Text>
@@ -38,33 +55,20 @@ const SignIn = () => {
           </Text>
         </View>
       </LinearGradient>
-
-      {/* Login Form Card */}
       <View
-        style={{
-          shadowColor: "#000",
-          shadowOffset: { width: 5, height: 5 },
-          shadowOpacity: 0.3,
-          shadowRadius: 5,
-          elevation: 10,
-        }}
+        style={{ shadowColor: "#000", shadowOffset: { width: 5, height: 5 }, shadowOpacity: 0.3, shadowRadius: 5, elevation: 10 }}
         className="mx-5 -mt-28 bg-white rounded-xl shadow-2xl px-5 pt-6 pb-8">
-        {/* Form Title */}
         <Text className="text-xl font-bold text-center mb-6">Masuk</Text>
-
-        {/* Email/ID Input */}
         <View className="mb-4">
-          <Text className="text-base font-semibold mb-2">Email/ID PDAM</Text>
+          <Text className="text-base font-semibold mb-2">Email/Username</Text>
           <InputField
-            placeholder="E-mail / ID PDAM"
-            value={form.email}
-            onChangeText={(value) => setForm({ ...form, email: value })}
+            placeholder="Email / Username"
+            value={form.emailOrUsername}
+            onChangeText={(value) => setForm({ ...form, emailOrUsername: value })}
             containerStyle="bg-white shadow-sm"
             inputStyle="text-base"
           />
         </View>
-
-        {/* Password Input */}
         <View>
           <Text className="text-base font-semibold mb-2">Password</Text>
           <InputField
@@ -77,35 +81,22 @@ const SignIn = () => {
             showPasswordToggle
           />
         </View>
-
-        {/* Forgot Password Link */}
         <TouchableOpacity className="mt-1 mb-6">
           <Text className="text-gray-500 text-sm italic">Lupa password?</Text>
         </TouchableOpacity>
-
-        {/* Sign In Button with Gradient */}
         <TouchableOpacity onPress={onSignInPress} className="rounded-lg shadow-sm mb-6 overflow-hidden">
-          <LinearGradient
-            colors={["#2181FF", "#004EBA"]} // bg-blue-500 to bg-blue-400
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            className="py-2">
+          <LinearGradient colors={["#2181FF", "#004EBA"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} className="py-2">
             <Text className="text-white text-lg font-semibold text-center">Masuk</Text>
           </LinearGradient>
         </TouchableOpacity>
-
-        {/* Register Link */}
         <View className="flex-row justify-center items-center">
           <Text className="text-gray-600 text-base">Belum punya akun? </Text>
           <Link href="/sign-up">
             <Text className="text-blue-500 text-base">Daftar sekarang!</Text>
           </Link>
         </View>
-        {/* Copyright Text */}
         <Text className="text-center text-gray-500 mt-2">© Mata Air 2025</Text>
       </View>
     </View>
   );
-};
-
-export default SignIn;
+}

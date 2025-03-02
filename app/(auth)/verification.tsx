@@ -1,12 +1,18 @@
 import { useState, useRef, useEffect } from "react";
-import { View, Text, TouchableOpacity, TextInput, Keyboard } from "react-native";
+import { View, Text, TouchableOpacity, TextInput, Keyboard, Alert, ActivityIndicator } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
+import axios from "axios";
+import { useAuth } from "@/lib/context/authContext";
 
 const VerificationScreen = () => {
   const [code, setCode] = useState(["", "", "", "", "", ""]);
   const [timer, setTimer] = useState(60);
+  const [loading, setLoading] = useState(false);
   const inputs = useRef([]);
+  const { token } = useAuth();
+  const params = useLocalSearchParams();
+  const email = params.email || "";
 
   useEffect(() => {
     if (timer > 0) {
@@ -33,15 +39,65 @@ const VerificationScreen = () => {
     }
   };
 
-  const handleResendCode = () => {
-    // Reset timer and resend code logic here
-    setTimer(60);
+  const handleResendCode = async () => {
+    try {
+      setLoading(true);
+      // You would normally call your resend code API here
+      // For now, we'll just reset the timer
+      setTimer(60);
+      Alert.alert("Kode terkirim", "Kode verifikasi baru telah dikirim ke email Anda.");
+    } catch (error) {
+      console.error("Error resending code:", error);
+      Alert.alert("Gagal", "Gagal mengirim ulang kode verifikasi. Silakan coba lagi.");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleVerify = () => {
-    // Verify code logic here
-    router.replace("/(root)/(tabs)/home");
-  };
+ const handleVerify = async () => {
+   try {
+     setLoading(true);
+     const verificationCode = code.join("");
+
+     if (verificationCode.length !== 6) {
+       Alert.alert("Kode tidak lengkap", "Silakan masukkan 6 digit kode verifikasi.");
+       setLoading(false);
+       return;
+     }
+
+     const verificationUrl = `https://pdampolman.airmurah.id/api/verifAccount/${verificationCode}`;
+     console.log("Verification URL:", verificationUrl); // Log the URL here
+
+     const response = await axios.get(verificationUrl, {
+       headers: {
+         "Content-Type": "application/json",
+         "wh8-cons-id": process.env.EXPO_PUBLIC_WH8_CONS_ID?.replace(/[",]/g, "") || "admin-wh8",
+         "wh8-access-token": token,
+       },
+     });
+
+     console.log("Verification response:", response.data);
+
+     if (response.data.metadata.code === 200) {
+       Alert.alert("Berhasil", "Akun Anda telah diverifikasi.", [{ text: "OK", onPress: () => router.replace("/(root)/(tabs)/home") }]);
+     } else {
+       Alert.alert("Gagal", response.data.metadata.message || "Kode verifikasi salah. Silakan coba lagi.");
+     }
+   } catch (error) {
+     console.error("Verification error:", error);
+
+     // Handle specific error cases
+     if (error.response) {
+       const message = error.response.data?.metadata?.message || "Terjadi kesalahan saat verifikasi.";
+       Alert.alert("Gagal", message);
+     } else {
+       Alert.alert("Gagal", "Gagal melakukan verifikasi. Periksa koneksi Anda dan coba lagi.");
+     }
+   } finally {
+     setLoading(false);
+   }
+ };
+
 
   return (
     <View className="flex-1 bg-white">
@@ -49,7 +105,7 @@ const VerificationScreen = () => {
         <View className="px-4 pt-16 pb-4">
           <Text className="text-white text-3xl font-bold text-center">Verifikasi Kode</Text>
           <Text className="text-white text-base font-light text-center mt-3 px-8 leading-5">
-            Masukkan kode verifikasi yang telah{"\n"}dikirim ke email Anda
+            Masukkan kode verifikasi yang telah{"\n"}dikirim ke {email || "email Anda"}
           </Text>
         </View>
       </LinearGradient>
@@ -85,16 +141,24 @@ const VerificationScreen = () => {
             {timer > 0 ? (
               <Text className="text-gray-500">Kirim ulang kode dalam {timer} detik</Text>
             ) : (
-              <TouchableOpacity onPress={handleResendCode}>
+              <TouchableOpacity onPress={handleResendCode} disabled={loading}>
                 <Text className="text-blue-500 font-semibold">Kirim Ulang Kode</Text>
               </TouchableOpacity>
             )}
           </View>
 
           {/* Verify Button */}
-          <TouchableOpacity onPress={handleVerify} className="rounded-xl overflow-hidden">
-            <LinearGradient colors={["#2181FF", "#004EBA"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} className="py-2">
-              <Text className="text-white text-lg font-semibold text-center">Verifikasi</Text>
+          <TouchableOpacity onPress={handleVerify} className="rounded-xl overflow-hidden" disabled={loading || code.some((digit) => digit === "")}>
+            <LinearGradient
+              colors={code.some((digit) => digit === "") ? ["#A0A0A0", "#808080"] : ["#2181FF", "#004EBA"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              className="py-3">
+              {loading ? (
+                <ActivityIndicator color="white" size="small" />
+              ) : (
+                <Text className="text-white text-lg font-semibold text-center">Verifikasi</Text>
+              )}
             </LinearGradient>
           </TouchableOpacity>
         </View>

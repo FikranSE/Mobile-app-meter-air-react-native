@@ -5,7 +5,7 @@ import { router } from "expo-router";
 import * as Clipboard from "expo-clipboard";
 import { icons } from "@/constants";
 
-const PaymentStatus = () => {
+const DetailTransaksi = () => {
   const [showAlert, setShowAlert] = useState(false);
   const transactionData = {
     metodePembayaran: "QRIS",
@@ -243,4 +243,4 @@ const PaymentStatus = () => {
   );
 };
 
-export default PaymentStatus;
+export default DetailTransaksi;

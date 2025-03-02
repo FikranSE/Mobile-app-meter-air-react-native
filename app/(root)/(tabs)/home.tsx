@@ -1,13 +1,14 @@
-import React, { useState, useRef } from "react";
-import { ScrollView, View, Text, TouchableOpacity, Dimensions, Image, ImageBackground, Alert, Animated } from "react-native";
-import { Feather } from "@expo/vector-icons";
+import React, { useState, useEffect, useRef } from "react";
+import { ScrollView, View, Text, TouchableOpacity, Dimensions, Image, ImageBackground, Animated, Alert } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { router } from "expo-router";
+import { useRouter } from "expo-router";
 import { LineChart } from "react-native-chart-kit";
 import { icons, images } from "@/constants";
-import * as Clipboard from "expo-clipboard"; 
+import * as Clipboard from "expo-clipboard";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { api } from "@/lib/api";
 
-// Data untuk Chart
+// Data for Chart
 const chartData = {
   labels: ["1", "2", "3", "4", "5", "6", "7"],
   datasets: [
@@ -19,13 +20,16 @@ const chartData = {
   ],
 };
 
-// Tipe Data untuk State
-type CustomerType = "pascabayar" | "prabayar";
-
 const Home = () => {
-  const [customerType, setCustomerType] = useState<CustomerType>("prabayar");
-  const screenWidth = Dimensions.get("window").width;
+  const [customerType, setCustomerType] = useState("prabayar");
+  const [customerData, setCustomerData] = useState(null);
   const [showAlert, setShowAlert] = useState(false);
+  const [alertMessage, setAlertMessage] = useState("");
+  const router = useRouter();
+  const screenWidth = Dimensions.get("window").width;
+
+  const slideAnim = useRef(new Animated.Value(-100)).current;
+  const opacity = useRef(new Animated.Value(0)).current;
 
   const chartConfig = {
     backgroundColor: "#ffffff",
@@ -55,19 +59,67 @@ const Home = () => {
     fillShadowGradientOpacity: 0.3,
   };
 
-  const notificationCount = 3;
+  useEffect(() => {
+    const fetchCustomerData = async () => {
+      try {
+        // Retrieve login credentials and tokens from AsyncStorage
+        const username = await AsyncStorage.getItem("username");
+        const password = await AsyncStorage.getItem("password");
+        const dataToken = await AsyncStorage.getItem("userToken"); // Changed to userToken as per your authStorage
+        const consId = process.env.EXPO_PUBLIC_WH8_CONS_ID?.replace(/[",]/g, "") || "admin-wh8";
+        const accessToken = await AsyncStorage.getItem("access_token");
 
-  // Animation values for alert
-  const slideAnim = useRef(new Animated.Value(-100)).current;
-  const opacity = useRef(new Animated.Value(0)).current;
+        if (!username || !password || !dataToken || !accessToken) {
+          console.log("Missing credentials:", { username, password, dataToken, accessToken });
+          // Save username and password temporarily when logging in
+          await AsyncStorage.setItem("username", username || "");
+          await AsyncStorage.setItem("password", password || "");
+          return;
+        }
 
-  const showAnimatedAlert = () => {
+        console.log("Fetching customer data with credentials:", { username, dataToken });
+
+        // Fetch customer data using the provided API endpoint
+        const response = await api.post(
+          "/getDataConstumer", // Removed the full URL to use the baseURL from api.js
+          {
+            username: username,
+            password: password,
+            data_token: dataToken,
+            cons_id: consId,
+            access_token: accessToken,
+          },
+          {
+            headers: {
+              "Content-Type": "application/json",
+            },
+          }
+        );
+
+        // Check if the API response is successful
+        if (response.data.metadata.code === 200) {
+          console.log("Customer data fetched successfully:", response.data.response.data);
+          // Save customer data to state
+          setCustomerData(response.data.response.data);
+        } else {
+          console.log("API returned error:", response.data.metadata);
+          Alert.alert("Error", "Failed to fetch customer data: " + response.data.metadata.message);
+        }
+      } catch (error) {
+        console.error("Error fetching customer data:", error);
+        Alert.alert("Error", "Failed to fetch customer data. Please try again later.");
+      }
+    };
+
+    fetchCustomerData();
+  }, []);
+
+  const showAnimatedAlert = (message) => {
+    setAlertMessage(message);
     setShowAlert(true);
-    // Reset animation values
     slideAnim.setValue(-100);
     opacity.setValue(0);
 
-    // Start animations
     Animated.parallel([
       Animated.timing(slideAnim, {
         toValue: 0,
@@ -81,7 +133,6 @@ const Home = () => {
       }),
     ]).start();
 
-    // Auto hide after 3 seconds
     setTimeout(() => {
       hideAnimatedAlert();
     }, 3000);
@@ -104,10 +155,16 @@ const Home = () => {
     });
   };
 
+  const notificationCount = 3;
+
   const handleCopyPDAMID = async () => {
     try {
-      await Clipboard.setStringAsync("12345678901");
-      showAnimatedAlert();
+      if (customerData?.meter_number) {
+        await Clipboard.setStringAsync(customerData.meter_number);
+        showAnimatedAlert("ID PDAM berhasil disalin");
+      } else {
+        showAnimatedAlert("ID PDAM tidak tersedia");
+      }
     } catch (error) {
       Alert.alert("Error", "Gagal menyalin ID PDAM.");
     }
@@ -121,11 +178,17 @@ const Home = () => {
     }
   };
 
-
+  // Function to format amount with Rp.
+  const formatRupiah = (amount) => {
+    return new Intl.NumberFormat("id-ID", {
+      style: "currency",
+      currency: "IDR",
+      minimumFractionDigits: 0,
+    }).format(amount || 0);
+  };
 
   return (
     <ScrollView className="flex-1 bg-white ">
-      {/* Animated Alert */}
       {showAlert && (
         <Animated.View
           style={{
@@ -153,14 +216,15 @@ const Home = () => {
             }}>
             <View style={{ flex: 1 }}>
               <Text style={{ fontSize: 16, fontWeight: "600", color: "#43A047", marginBottom: 2 }}>Berhasil</Text>
-              <Text style={{ fontSize: 14, color: "#43A047" }}>ID PDAM telah disalin ke clipboard</Text>
+              <Text style={{ fontSize: 14, color: "#43A047" }}>{alertMessage}</Text>
             </View>
             <TouchableOpacity onPress={hideAnimatedAlert}>
-              <Image source={icons.close} style={{ width: 14, height: 14, tintColor: "#43A047" }} />
+              <Image source={{ uri: "close_icon_url" }} style={{ width: 14, height: 14, tintColor: "#43A047" }} />
             </TouchableOpacity>
           </View>
         </Animated.View>
       )}
+
       {/* Header */}
       <LinearGradient
         colors={["#004EBA", "#2181FF"]}
@@ -177,7 +241,7 @@ const Home = () => {
         <View className="flex-row justify-between items-center mt-8 p-5">
           <View className="flex-row items-center space-x-2">
             <Image source={icons.pin} className="w-3.5 h-4" tintColor="white" />
-            <Text className="text-white text-md font-base">Ampekale</Text>
+            <Text className="text-white text-md font-base">{customerData?.village || "Loading..."}</Text>
           </View>
           <TouchableOpacity onPress={() => router.push("/(root)/notifikasi")}>
             <View className="relative">
@@ -206,7 +270,7 @@ const Home = () => {
         </View>
       </LinearGradient>
 
-      {/* Info Card */}
+      {/* Customer Info Card */}
       <LinearGradient
         style={{
           shadowColor: "#000",
@@ -226,7 +290,7 @@ const Home = () => {
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}>
         <View className="flex-row justify-start items-center">
-          <Text className="text-white text-lg font-bold">Halo, Sumarno</Text>
+          <Text className="text-white text-lg font-bold">Halo, {customerData?.name || "User"}</Text>
         </View>
 
         <View className="mt-5">
@@ -236,18 +300,16 @@ const Home = () => {
           </View>
           <View className="flex-row justify-between mt-3 items-center">
             <TouchableOpacity className="flex-row items-center" onPress={handleCopyPDAMID} activeOpacity={0.7}>
-              <Text className="text-white text-lg font-medium">{`12345678901`}</Text>
+              <Text className="text-white text-lg font-medium">{customerData?.meter_number || "Tidak tersedia"}</Text>
               <Image source={icons.copy} className="w-4 h-4 ml-2" tintColor="white" />
             </TouchableOpacity>
-            <Text className="text-white text-lg font-bold">{`Rp. 35.000,-`}</Text>
+            <Text className="text-white text-lg font-bold">{formatRupiah(50000)}</Text>
           </View>
         </View>
 
         <View className="flex-row justify-between items-center mt-5">
           <Text className="text-white opacity-70 font-bold mr-4">• {customerType === "pascabayar" ? "Pascabayar" : "Prabayar"}</Text>
-          <TouchableOpacity
-            onPress={handleNavigation} // Updated onPress handler
-            className="rounded-full">
+          <TouchableOpacity onPress={handleNavigation} className="rounded-full">
             <LinearGradient
               colors={["#8CC0FFFF", "#0263FFFF"]}
               start={{ x: 0, y: 0 }}
@@ -265,6 +327,35 @@ const Home = () => {
           </TouchableOpacity>
         </View>
       </LinearGradient>
+
+      {/* Customer Details */}
+      {customerData && (
+        <View className="mx-5 mt-6 p-4 bg-white rounded-xl shadow-md">
+          <Text className="text-black text-lg font-bold mb-4">Informasi Pelanggan</Text>
+          <View className="space-y-2">
+            <View className="flex-row justify-between">
+              <Text className="text-gray-600">NIK</Text>
+              <Text className="text-black font-medium">{customerData.nik || "-"}</Text>
+            </View>
+            <View className="flex-row justify-between">
+              <Text className="text-gray-600">Telephone</Text>
+              <Text className="text-black font-medium">{customerData.phone || "-"}</Text>
+            </View>
+            <View className="flex-row justify-between">
+              <Text className="text-gray-600">Email</Text>
+              <Text className="text-black font-medium">{customerData.email || "-"}</Text>
+            </View>
+            <View className="flex-row justify-between">
+              <Text className="text-gray-600">Konfigurasi Meter</Text>
+              <Text className="text-black font-medium">{customerData.meter_config || "-"}</Text>
+            </View>
+            <View className="flex-row justify-between">
+              <Text className="text-gray-600">Alamat</Text>
+              <Text className="text-black font-medium text-right">{customerData.address || "-"}</Text>
+            </View>
+          </View>
+        </View>
+      )}
 
       {/* Riwayat Penggunaan Air */}
       <View className="mb-[250px]">
@@ -284,9 +375,9 @@ const Home = () => {
               borderRadius: 16,
             }}
             withHorizontalLabels={true}
-            withVerticalLabels={true} // Enable vertical labels
-            withInnerLines={true} // Enable inner lines
-            withOuterLines={true} // Enable outer lines
+            withVerticalLabels={true}
+            withInnerLines={true}
+            withOuterLines={true}
             getDotColor={() => "#2181FF"}
             segments={4}
           />
