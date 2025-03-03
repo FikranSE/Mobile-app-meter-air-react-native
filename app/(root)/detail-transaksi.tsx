@@ -74,6 +74,7 @@ const DetailTransaksi = () => {
       if (response.data.metadata.code === 200) {
         console.log("Customer data fetched successfully:", response.data.response.data);
         setCustomerData(response.data.response.data);
+        return response.data.response.data;
       } else {
         console.log("API returned error:", response.data.metadata);
         Alert.alert("Error", "Failed to fetch customer data: " + response.data.metadata.message);
@@ -82,6 +83,7 @@ const DetailTransaksi = () => {
       console.error("Error fetching customer data:", error);
       Alert.alert("Error", "Failed to fetch customer data. Please try again later.");
     }
+    return null;
   };
 
   useEffect(() => {
@@ -98,8 +100,12 @@ const DetailTransaksi = () => {
           console.log("Loaded stored transaction data:", parsedData);
         }
 
+        // Extract token number from params or stored data
         const newTokenNumber = params.tokenNumber?.toString() || parsedData?.tokenNumber || "";
-        const newCubicData = params.cubicData?.toString() || parsedData?.cubic || "";
+
+        // Extract cubic data, first try from params, then from dataCubic in stored transaction, finally from rincian.cubic
+        const newCubicData = params.cubicData?.toString() || parsedData?.dataCubic || parsedData?.rincian?.cubic || "";
+
         const customerId = params.customerId?.toString() || parsedData?.pelanggan?.id || "";
 
         setTokenNumber(newTokenNumber);
@@ -117,6 +123,7 @@ const DetailTransaksi = () => {
             rincian: {
               ...transactionData.rincian,
               ...parsedData.rincian,
+              // Ensure the cubic data is set in the rincian object as well
               cubic: newCubicData,
             },
           };
@@ -134,8 +141,6 @@ const DetailTransaksi = () => {
               meter_number: customerData.meter_number || newTransactionData.pelanggan.meter_number || "-",
               meter_config: customerData.meter_config || "-",
             };
-          } else {
-            
           }
         } else {
           console.warn("No customer ID available to fetch data");
@@ -308,7 +313,7 @@ const DetailTransaksi = () => {
         className="h-[30%] rounded-b-lg shadow-xl relative">
         <View className="flex-row justify-between items-center mt-8 p-5">
           <View className="flex-row items-center space-x-2">
-            <TouchableOpacity onPress={() => router.replace('/(root)/(tabs)/home')}>
+            <TouchableOpacity onPress={() => router.replace("/(root)/(tabs)/home")}>
               <Image source={icons.close} className="w-4 h-4" tintColor="white" />
             </TouchableOpacity>
             <Text className="text-white text-lg font-medium">Tutup</Text>
@@ -330,138 +335,168 @@ const DetailTransaksi = () => {
           elevation: 5,
         }}
         className="absolute top-24 left-4 right-4 bg-white rounded-lg p-4">
-        <ScrollView contentContainerStyle={{ paddingBottom: 130 }} showsVerticalScrollIndicator={false}>
-          {/* Icon and Title */}
-          <View className="items-center mb-4">
-            <View
-              className={`w-14 h-14 rounded-full flex items-center justify-center border ${
-                hasTokenNumber ? "bg-green-100 border-green-500" : "bg-red-100 border-red-500"
-              }`}>
-              <Image source={hasTokenNumber ? icons.checkmark : icons.close} className="w-6 h-6" tintColor={hasTokenNumber ? "#00C853" : "#FF0000"} />
-            </View>
-            <Text className="text-xl font-bold mt-2">{hasTokenNumber ? "Pembelian Berhasil" : "Pembelian Gagal"}</Text>
+        {isLoading ? (
+          <View className="flex-1 justify-center items-center">
+            <ActivityIndicator size="large" color="#004EBA" />
+            <Text className="mt-2 text-gray-600">Memuat data transaksi...</Text>
           </View>
-
-          {/* Token Section */}
-          {hasTokenNumber ? (
-            <View className="border-b border-dashed border-gray-300 pb-2 mb-2">
-              <Text className="text-sm font-semibold mb-1">Token Anda</Text>
-              <View className="flex-row justify-between items-center">
-                <Text className="text-gray-800 text-base font-bold">{tokenNumber}</Text>
-                <TouchableOpacity className="flex-row items-center" onPress={copyToken}>
-                  <Text className="text-blue-600 text-xs font-bold mr-1">Salin</Text>
-                  <Image source={icons.copy} className="w-3 h-3" tintColor="#0369A1" />
-                </TouchableOpacity>
+        ) : (
+          <ScrollView contentContainerStyle={{ paddingBottom: 130 }} showsVerticalScrollIndicator={false}>
+            {/* Icon and Title */}
+            <View className="items-center mb-4">
+              <View
+                className={`w-14 h-14 rounded-full flex items-center justify-center border ${
+                  hasTokenNumber ? "bg-green-100 border-green-500" : "bg-red-100 border-red-500"
+                }`}>
+                <Image
+                  source={hasTokenNumber ? icons.checkmark : icons.close}
+                  className="w-6 h-6"
+                  tintColor={hasTokenNumber ? "#00C853" : "#FF0000"}
+                />
               </View>
+              <Text className="text-xl font-bold mt-2">{hasTokenNumber ? "Pembelian Berhasil" : "Pembelian Gagal"}</Text>
             </View>
-          ) : null}
 
-          {/* Cubic Data Section */}
-          {cubicData ? (
-            <View className="border-b border-dashed border-gray-300 pb-2 mb-2">
-              <Text className="text-sm font-semibold mb-1">Data Cubic</Text>
-              <View className="flex-row justify-between items-center">
-                <Text className="text-gray-800 text-base font-bold">{cubicData}</Text>
-                <TouchableOpacity className="flex-row items-center" onPress={copyCubic}>
-                  <Text className="text-blue-600 text-xs font-bold mr-1">Salin</Text>
-                  <Image source={icons.copy} className="w-3 h-3" tintColor="#0369A1" />
-                </TouchableOpacity>
-              </View>
-            </View>
-          ) : null}
-
-          {/* Detail Pembelian */}
-          <View className="border-b border-dashed border-gray-300 pb-2 mb-2">
-            <Text className="text-sm font-semibold mb-1">Detail Pembelian</Text>
-            {[
-              { label: "Metode Pembayaran", value: transactionData.metodePembayaran || "-" },
-              { label: "Status", value: transactionData.status || "-" },
-              { label: "Waktu", value: transactionData.waktu || "-" },
-              { label: "Tanggal", value: transactionData.tanggal || "-" },
-            ].map((item, index) => (
-              <View key={index} className="flex-row justify-between mb-1 items-center">
-                <Text className="text-gray-500 text-xs">{item.label}</Text>
-                {item.label === "Status" ? (
-                  <Text
-                    className={`text-xs font-bold ${
-                      item.value === "Gagal" ? "text-red-500" : item.value === "Berhasil" ? "text-green-500" : "text-gray-500"
-                    }`}>
-                    {item.value}
-                  </Text>
-                ) : (
-                  <Text className="text-gray-800 text-xs font-bold">{item.value}</Text>
-                )}
-              </View>
-            ))}
-          </View>
-
-          {/* Detail Pelanggan */}
-          <View className="border-b border-dashed border-gray-300 pb-2 mb-2">
-            {/* Customer Info */}
-            {customerData && (
+            {/* Token Section */}
+            {hasTokenNumber ? (
               <View className="border-b border-dashed border-gray-300 pb-2 mb-2">
-                <Text className="text-sm font-semibold mb-1">Detail Pelanggan</Text>
-                <View className="flex-row justify-between mb-1 items-center">
-                  <Text className="text-gray-500 text-xs">Nama</Text>
-                  <Text className="text-gray-800 text-xs font-bold">{customerData.name}</Text>
-                </View>
-                <View className="flex-row justify-between mb-1 items-center">
-                  <Text className="text-gray-500 text-xs">Alamat</Text>
-                  <Text className="text-gray-800 text-xs font-bold">{customerData.address}</Text>
-                </View>
-                <View className="flex-row justify-between mb-1 items-center">
-                  <Text className="text-gray-500 text-xs">Meter Number</Text>
-                  <Text className="text-gray-800 text-xs font-bold">{customerData.meter_number}</Text>
-                </View>
-                <View className="flex-row justify-between mb-1 items-center">
-                  <Text className="text-gray-500 text-xs">Meter Config</Text>
-                  <Text className="text-gray-800 text-xs font-bold">{customerData.meter_config}</Text>
+                <Text className="text-sm font-semibold mb-1">Token Anda</Text>
+                <View className="flex-row justify-between items-center">
+                  <Text className="text-gray-800 text-base font-bold">{tokenNumber}</Text>
+                  <TouchableOpacity className="flex-row items-center" onPress={copyToken}>
+                    <Text className="text-blue-600 text-xs font-bold mr-1">Salin</Text>
+                    <Image source={icons.copy} className="w-3 h-3" tintColor="#0369A1" />
+                  </TouchableOpacity>
                 </View>
               </View>
-            )}
-          </View>
+            ) : null}
 
-          {/* Detail Tagihan */}
-          {hasTokenNumber && (
+            {/* Cubic Data Section */}
+            {cubicData ? (
+              <View className="border-b border-dashed border-gray-300 pb-2 mb-2">
+                <Text className="text-sm font-semibold mb-1">Data Cubic</Text>
+                <View className="flex-row justify-between items-center">
+                  <Text className="text-gray-800 text-base font-bold">{cubicData} m³</Text>
+                </View>
+              </View>
+            ) : null}
+
+            {/* Detail Pembelian */}
             <View className="border-b border-dashed border-gray-300 pb-2 mb-2">
-              <Text className="text-sm font-semibold mb-1">Detail Tagihan</Text>
+              <Text className="text-sm font-semibold mb-1">Detail Pembelian</Text>
               {[
-                { label: "Tagihan", value: transactionData.rincian.tagihan || "-" },
-                { label: "Denda", value: transactionData.rincian.denda || "-" },
-                { label: "Biaya Admin", value: transactionData.rincian.biayaAdmin || "-" },
+                { label: "Metode Pembayaran", value: transactionData.metodePembayaran || "-" },
+                { label: "Status", value: transactionData.status || "-" },
+                { label: "Waktu", value: transactionData.waktu || "-" },
+                { label: "Tanggal", value: transactionData.tanggal || "-" },
               ].map((item, index) => (
-                <View key={index} className="flex-row justify-between mb-1">
+                <View key={index} className="flex-row justify-between mb-1 items-center">
                   <Text className="text-gray-500 text-xs">{item.label}</Text>
-                  <Text className="text-gray-800 text-xs font-bold">{item.value}</Text>
+                  {item.label === "Status" ? (
+                    <Text
+                      className={`text-xs font-bold ${
+                        item.value === "Gagal" ? "text-red-500" : item.value === "Berhasil" ? "text-green-500" : "text-gray-500"
+                      }`}>
+                      {item.value}
+                    </Text>
+                  ) : (
+                    <Text className="text-gray-800 text-xs font-bold">{item.value}</Text>
+                  )}
                 </View>
               ))}
             </View>
-          )}
 
-          {/* Total */}
-          <View className="flex-row justify-between mb-4">
-            <Text className="text-xl font-bold">Total</Text>
-            <Text className="text-xl font-bold">{transactionData.rincian.total || "-"}</Text>
-          </View>
+            {/* Detail Pelanggan */}
+            <View className="border-b border-dashed border-gray-300 pb-2 mb-2">
+              <Text className="text-sm font-semibold mb-1">Detail Pelanggan</Text>
+              {customerData ? (
+                <>
+                  <View className="flex-row justify-between mb-1 items-center">
+                    <Text className="text-gray-500 text-xs">Nama</Text>
+                    <Text className="text-gray-800 text-xs font-bold">{customerData.name || transactionData.pelanggan.nama || "-"}</Text>
+                  </View>
+                  <View className="flex-row justify-between mb-1 items-center">
+                    <Text className="text-gray-500 text-xs">Alamat</Text>
+                    <Text className="text-gray-800 text-xs font-bold">{customerData.address || transactionData.pelanggan.alamat || "-"}</Text>
+                  </View>
+                  <View className="flex-row justify-between mb-1 items-center">
+                    <Text className="text-gray-500 text-xs">Meter Number</Text>
+                    <Text className="text-gray-800 text-xs font-bold">
+                      {customerData.meter_number || transactionData.pelanggan.meter_number || "-"}
+                    </Text>
+                  </View>
+                  <View className="flex-row justify-between mb-1 items-center">
+                    <Text className="text-gray-500 text-xs">Meter Config</Text>
+                    <Text className="text-gray-800 text-xs font-bold">
+                      {customerData.meter_config || transactionData.pelanggan.meter_config || "-"}
+                    </Text>
+                  </View>
+                </>
+              ) : (
+                <>
+                  <View className="flex-row justify-between mb-1 items-center">
+                    <Text className="text-gray-500 text-xs">Nama</Text>
+                    <Text className="text-gray-800 text-xs font-bold">{transactionData.pelanggan.nama || "-"}</Text>
+                  </View>
+                  <View className="flex-row justify-between mb-1 items-center">
+                    <Text className="text-gray-500 text-xs">Alamat</Text>
+                    <Text className="text-gray-800 text-xs font-bold">{transactionData.pelanggan.alamat || "-"}</Text>
+                  </View>
+                  <View className="flex-row justify-between mb-1 items-center">
+                    <Text className="text-gray-500 text-xs">Meter Number</Text>
+                    <Text className="text-gray-800 text-xs font-bold">{transactionData.pelanggan.meter_number || "-"}</Text>
+                  </View>
+                  {transactionData.pelanggan.meter_config && (
+                    <View className="flex-row justify-between mb-1 items-center">
+                      <Text className="text-gray-500 text-xs">Meter Config</Text>
+                      <Text className="text-gray-800 text-xs font-bold">{transactionData.pelanggan.meter_config}</Text>
+                    </View>
+                  )}
+                </>
+              )}
+            </View>
 
-          {/* Buttons */}
-          <View className="flex-col space-y-2 mt-0">
-            <TouchableOpacity>
-              <LinearGradient colors={["#2181FF", "#004EBA"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} className="rounded-lg py-2">
-                <Text className="text-white text-base font-semibold text-center">Bagi Bukti Pembelian</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-            <TouchableOpacity>
-              <LinearGradient colors={["#F93B3BFF", "#9F0000FF"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} className="rounded-lg py-2">
-                <Text className="text-white text-base font-semibold text-center">Laporkan Masalah</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-          </View>
-        </ScrollView>
+            {/* Detail Tagihan */}
+            {hasTokenNumber && (
+              <View className="border-b border-dashed border-gray-300 pb-2 mb-2">
+                <Text className="text-sm font-semibold mb-1">Detail Tagihan</Text>
+                {[
+                  { label: "Tagihan", value: transactionData.rincian.tagihan || "-" },
+                  { label: "Biaya Admin", value: transactionData.rincian.biayaAdmin || "-" },
+                  { label: "Denda", value: transactionData.rincian.denda || "-" },
+                ].map((item, index) => (
+                  <View key={index} className="flex-row justify-between mb-1">
+                    <Text className="text-gray-500 text-xs">{item.label}</Text>
+                    <Text className="text-gray-800 text-xs font-bold">{item.value}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            {/* Total */}
+            <View className="flex-row justify-between mb-4">
+              <Text className="text-xl font-bold">Total</Text>
+              <Text className="text-xl font-bold">{transactionData.rincian.total || "-"}</Text>
+            </View>
+
+            {/* Buttons */}
+            <View className="flex-col space-y-2 mt-0">
+              <TouchableOpacity>
+                <LinearGradient colors={["#2181FF", "#004EBA"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} className="rounded-lg py-2">
+                  <Text className="text-white text-base font-semibold text-center">Bagi Bukti Pembelian</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+              <TouchableOpacity>
+                <LinearGradient colors={["#F93B3BFF", "#9F0000FF"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} className="rounded-lg py-2">
+                  <Text className="text-white text-base font-semibold text-center">Laporkan Masalah</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
+        )}
       </View>
     </View>
   );
 };
 
 export default DetailTransaksi;
-

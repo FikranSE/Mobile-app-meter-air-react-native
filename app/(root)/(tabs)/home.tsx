@@ -8,24 +8,26 @@ import * as Clipboard from "expo-clipboard";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { api } from "@/lib/api";
 
-// Data for Chart
-const chartData = {
-  labels: ["1", "2", "3", "4", "5", "6", "7"],
-  datasets: [
-    {
-      data: [50, 100, 80, 40, 90, 70, 110],
-      color: (opacity = 1) => `rgba(33, 129, 255, ${opacity})`,
-      strokeWidth: 2,
-    },
-  ],
-};
-
 const Home = () => {
   const [customerType, setCustomerType] = useState("prabayar");
   const [customerData, setCustomerData] = useState(null);
   const [totalSpending, setTotalSpending] = useState(0);
+  const [totalCubic, setTotalCubic] = useState(0);
+  const [transactions, setTransactions] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [showAlert, setShowAlert] = useState(false);
   const [alertMessage, setAlertMessage] = useState("");
+  const [chartData, setChartData] = useState({
+    labels: ["1", "2", "3", "4", "5", "6", "7"],
+    datasets: [
+      {
+        data: [50, 100, 80, 40, 90, 70, 110],
+        color: (opacity = 1) => `rgba(33, 129, 255, ${opacity})`,
+        strokeWidth: 2,
+      },
+    ],
+  });
+
   const router = useRouter();
   const screenWidth = Dimensions.get("window").width;
 
@@ -60,9 +62,9 @@ const Home = () => {
     fillShadowGradientOpacity: 0.3,
   };
 
-  // Fetch customer data untuk menampilkan informasi pelanggan
+  // Fetch customer data and transaction history combined
   useEffect(() => {
-    const fetchCustomerData = async () => {
+    const fetchData = async () => {
       try {
         // Ambil kredensial dan token dari AsyncStorage
         const username = await AsyncStorage.getItem("username");
@@ -73,14 +75,14 @@ const Home = () => {
 
         if (!username || !password || !dataToken || !accessToken) {
           console.log("Missing credentials:", { username, password, dataToken, accessToken });
+          // Jika kredensial belum lengkap, simpan username dan password secara sementara
           await AsyncStorage.setItem("username", username || "");
           await AsyncStorage.setItem("password", password || "");
           return;
         }
 
-        console.log("Fetching customer data with credentials:", { username, dataToken });
-
-        const response = await api.post(
+        // Fetch customer data
+        const customerResponse = await api.post(
           "/getDataConstumer",
           {
             username,
@@ -94,37 +96,23 @@ const Home = () => {
           }
         );
 
-        if (response.data.metadata.code === 200) {
-          console.log("Customer data fetched successfully:", response.data.response.data);
-          setCustomerData(response.data.response.data);
+        if (customerResponse.data.metadata.code === 200) {
+          const customerResponseData = customerResponse.data.response.data;
+          setCustomerData(customerResponseData);
+
+          // Check id_constumer to determine customer type
+          if (customerResponseData && customerResponseData.id_constumer) {
+            // If id_constumer contains "PASCA", set as pascabayar, otherwise prabayar
+            const isPostpaid = customerResponseData.id_constumer.includes("PASCA");
+            setCustomerType(isPostpaid ? "pascabayar" : "prabayar");
+            console.log("Customer type set to:", isPostpaid ? "pascabayar" : "prabayar");
+          }
         } else {
-          console.log("API returned error:", response.data.metadata);
-          Alert.alert("Error", "Failed to fetch customer data: " + response.data.metadata.message);
+          console.log("Customer data fetch error:", customerResponse.data.metadata.message);
         }
-      } catch (error) {
-        console.error("Error fetching customer data:", error);
-        Alert.alert("Error", "Failed to fetch customer data. Please try again later.");
-      }
-    };
 
-    fetchCustomerData();
-  }, []);
-
-  // Fetch transaction history untuk menghitung total purchase dari semua tanggal
-  useEffect(() => {
-    const fetchTransactionHistory = async () => {
-      try {
-        // Ambil kredensial dari AsyncStorage
-        const username = await AsyncStorage.getItem("username");
-        const password = await AsyncStorage.getItem("password");
-        const dataToken = await AsyncStorage.getItem("userToken");
-        const consId = process.env.EXPO_PUBLIC_WH8_CONS_ID?.replace(/[",]/g, "") || "admin-wh8";
-        const accessToken = await AsyncStorage.getItem("access_token");
-
-        if (!username || !password || !dataToken || !accessToken) {
-          console.log("Missing credentials for transaction history");
-          return;
-        }
+        // Construct requestBody dynamically using the fetched customer data
+        const { meter_number, id_constumer } = customerResponse.data.response.data;
 
         const requestBody = {
           username,
@@ -132,28 +120,86 @@ const Home = () => {
           data_token: dataToken,
           cons_id: consId,
           access_token: accessToken,
-          meter_number: 47500420436,
-          id_constumer: "POLMAN3",
+          meter_number,
+          id_constumer,
         };
 
+        // Fetch transaction history
         const response = await api.post("https://pdampolman.airmurah.id/api/histotyTrans", requestBody, {
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+          },
         });
 
         if (response.data.metadata.code === 200) {
-          const transactions = response.data.response.data;
-          // Kalkulasikan total purchase dari semua transaksi
-          const sum = transactions.reduce((acc, curr) => acc + Number(curr.purchase), 0);
+          const transactionData = response.data.response.data;
+          setTransactions(transactionData);
+
+          // Calculate total spending
+          const sum = transactionData.reduce((acc, curr) => acc + Number(curr.purchase), 0);
           setTotalSpending(sum);
+
+          // Calculate total cubic water usage
+          const totalCubic = transactionData.reduce((acc, curr) => {
+            // Assuming the cubic data is stored in a field named cubic or similar
+            // Check if cubic field exists and is a number
+            const cubicValue = Number(curr.cubic || 0);
+            return acc + cubicValue;
+          }, 0);
+          // Limit to 3 digits only - convert to string and take first 3 characters
+          const formattedCubic = String(totalCubic).substring(0, 3);
+          setTotalCubic(formattedCubic);
+
+          // Prepare chart data from transactions
+          if (transactionData.length > 0) {
+            // Sort transactions by date
+            const sortedTransactions = [...transactionData].sort((a, b) => {
+              return new Date(a.date) - new Date(b.date);
+            });
+
+            // Get the last 7 transactions or all if less than 7
+            const lastTransactions = sortedTransactions.slice(-7);
+
+            const labels = lastTransactions.map((trans, index) => {
+              // Try to parse the date, if it fails use the index + 1 as label
+              try {
+                const date = new Date(trans.date);
+                // Check if date is valid
+                if (!isNaN(date.getTime())) {
+                  return date.getDate().toString();
+                }
+                // Fallback to index + 1
+                return (index + 1).toString();
+              } catch (e) {
+                // If date parsing fails, use the index + 1 as label
+                return (index + 1).toString();
+              }
+            });
+
+            const data = lastTransactions.map((trans) => Number(trans.cubic || 0));
+
+            setChartData({
+              labels,
+              datasets: [
+                {
+                  data: data.length > 0 ? data : [0],
+                  color: (opacity = 1) => `rgba(33, 129, 255, ${opacity})`,
+                  strokeWidth: 2,
+                },
+              ],
+            });
+          }
         } else {
-          console.log("Error fetching transaction history:", response.data.metadata.message);
+          console.log("API Error:", response.data.metadata.message);
         }
       } catch (error) {
-        console.error("Error fetching transaction history:", error);
+        console.error("Error fetching data:", error);
+      } finally {
+        setLoading(false);
       }
     };
 
-    fetchTransactionHistory();
+    fetchData();
   }, []);
 
   const showAnimatedAlert = (message) => {
@@ -211,6 +257,13 @@ const Home = () => {
       currency: "IDR",
       minimumFractionDigits: 0,
     }).format(amount || 0);
+  };
+
+  // Get current month name in Indonesian
+  const getCurrentMonth = () => {
+    const months = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
+    const now = new Date();
+    return `${months[now.getMonth()]} ${now.getFullYear()}`;
   };
 
   return (
@@ -291,7 +344,7 @@ const Home = () => {
               justifyContent: "center",
               alignItems: "center",
             }}>
-            <Text className="text-white text-xl font-bold">23m³</Text>
+            <Text className="text-white text-xl font-bold">{totalCubic}m³</Text>
           </ImageBackground>
         </View>
       </LinearGradient>
@@ -354,13 +407,11 @@ const Home = () => {
         </View>
       </LinearGradient>
 
-     
-
       {/* Riwayat Penggunaan Air */}
       <View className="mb-[250px]">
         <View className="ml-7 mt-7">
           <Text className="text-black text-lg font-bold">Riwayat Penggunaan Air {">"}</Text>
-          <Text className="text-black mt-1 mb-4">Jan 2025</Text>
+          <Text className="text-black mt-1 mb-4">{getCurrentMonth()}</Text>
         </View>
         <View>
           <LineChart

@@ -1,4 +1,3 @@
-// BeliToken.tsx - Modified to pass tokenNumber to DetailTransaksi
 import React, { ReactNode, useState, useRef, useEffect } from "react";
 import { View, Text, TextInput, TouchableOpacity, Image, ScrollView, Animated, Modal, Alert } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -13,6 +12,16 @@ interface BeliTokenProps {
   children: ReactNode;
 }
 
+interface CubicResponse {
+  metadata: {
+    code: number;
+    message: string;
+  };
+  response: {
+    "data-cubic": number;
+  };
+}
+
 const BeliToken: React.FC<BeliTokenProps> = ({ children }) => {
   const [nomorPDAM, setNomorPDAM] = useState("");
   const [nominal, setNominal] = useState("");
@@ -22,6 +31,10 @@ const BeliToken: React.FC<BeliTokenProps> = ({ children }) => {
   const [showError, setShowError] = useState(false);
   const [tokenNumber, setTokenNumber] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [customerData, setCustomerData] = useState(null);
+  // State for cubic meters calculation
+  const [cubicMeters, setCubicMeters] = useState<number | null>(null);
+  const [isFetchingCubic, setIsFetchingCubic] = useState(false);
 
   const [showSuccessModal, setShowSuccessModal] = useState(false);
 
@@ -38,6 +51,110 @@ const BeliToken: React.FC<BeliTokenProps> = ({ children }) => {
 
   const BASE_URL = "https://pdampolman.airmurah.id/api";
 
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Ambil kredensial dan token dari AsyncStorage
+        const username = await AsyncStorage.getItem("username");
+        const password = await AsyncStorage.getItem("password");
+        const dataToken = await AsyncStorage.getItem("userToken");
+        const consId = process.env.EXPO_PUBLIC_WH8_CONS_ID?.replace(/[",]/g, "") || "admin-wh8";
+        const accessToken = await AsyncStorage.getItem("access_token");
+
+        if (!username || !password || !dataToken || !accessToken) {
+          console.log("Missing credentials:", { username, password, dataToken, accessToken });
+          // Jika kredensial belum lengkap, simpan username dan password secara sementara
+          await AsyncStorage.setItem("username", username || "");
+          await AsyncStorage.setItem("password", password || "");
+          return;
+        }
+
+        // Fetch customer data
+        const customerResponse = await axios.post(
+          `${BASE_URL}/getDataConstumer`,
+          {
+            username,
+            password,
+            data_token: dataToken,
+            cons_id: consId,
+            access_token: accessToken,
+          },
+          {
+            headers: { "Content-Type": "application/json" },
+          }
+        );
+
+        if (customerResponse.data.metadata.code === 200) {
+          setCustomerData(customerResponse.data.response.data);
+          // Set meter number directly in the input field
+          if (customerResponse.data.response.data.meter_number) {
+            setNomorPDAM(customerResponse.data.response.data.meter_number.toString());
+          }
+        } else {
+          console.log("Customer data fetch error:", customerResponse.data.metadata.message);
+        }
+      } catch (error) {
+        console.error("Error fetching meter number:", error);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  // Add effect to calculate cubic meters when nominal changes
+  useEffect(() => {
+    const debounceTimer = setTimeout(() => {
+      if (nominal) {
+        const numericValue = nominal.replace(/\D/g, "");
+        if (numericValue && parseInt(numericValue) >= 10000) {
+          fetchCubicData(parseInt(numericValue));
+        } else {
+          setCubicMeters(null);
+        }
+      } else {
+        setCubicMeters(null);
+      }
+    }, 500); // Debounce for 500ms
+
+    return () => clearTimeout(debounceTimer);
+  }, [nominal]);
+
+  const fetchCubicData = async (purchaseAmount: number) => {
+    if (isFetchingCubic) return;
+
+    try {
+      setIsFetchingCubic(true);
+      const { username, password, dataToken, consId, accessToken } = await getCredentials();
+
+      const response = await axios.post<CubicResponse>(
+        `${BASE_URL}/getCubicData`,
+        {
+          username,
+          password,
+          data_token: dataToken,
+          cons_id: consId,
+          access_token: accessToken,
+          purchase: purchaseAmount,
+        },
+        {
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+
+      if (response.data.metadata.code === 200) {
+        setCubicMeters(response.data.response["data-cubic"]);
+      } else {
+        console.log("Cubic data fetch error:", response.data.metadata.message);
+        setCubicMeters(null);
+      }
+    } catch (error) {
+      console.error("Error fetching cubic data:", error);
+      setCubicMeters(null);
+    } finally {
+      setIsFetchingCubic(false);
+    }
+  };
+
   const formatCurrency = (value: string) => {
     const numericValue = value.replace(/\D/g, "");
     return numericValue === "" ? "" : `Rp. ${parseInt(numericValue).toLocaleString("id-ID")},-`;
@@ -53,13 +170,6 @@ const BeliToken: React.FC<BeliTokenProps> = ({ children }) => {
       return { username, password, dataToken, consId, accessToken };
     } catch (error) {
       console.error("Error retrieving credentials:", error);
-      return {
-        username: "revi123",
-        password: "revi12345",
-        dataToken: "GQVaTdfvfzwzwrgmXTiJohFbjvBxyuPOCfUHpyolZzOpUgLdMZ",
-        consId: "admin-wh8",
-        accessToken: "RXQDtALNLbFsMTlgkTWcOKxtYGSFtDUiPkUCxczRJQinCNIqlr",
-      };
     }
   };
 
@@ -141,7 +251,7 @@ const BeliToken: React.FC<BeliTokenProps> = ({ children }) => {
         access_token: accessToken,
         purchase: parseInt(purchaseAmount, 10),
         meter_number: parseInt(nomorPDAM, 10),
-        id_constumer: "POLMAN3",
+        id_constumer: customerData?.id_constumer || "POLMAN3",
         pin_trans: parseInt(pinTrans, 10),
       };
 
@@ -156,6 +266,9 @@ const BeliToken: React.FC<BeliTokenProps> = ({ children }) => {
         const tokenNumberFromResponse = response.data.response.data["token-number"];
         const currentDate = new Date();
 
+        // Format the cubic data properly
+        const formattedCubicData = cubicMeters ? cubicMeters.toFixed(2) : "0.00";
+
         // Store the transaction details
         const transDetails = {
           metodePembayaran: "PDAM Direct", // Assuming this is the method, modify as needed
@@ -164,15 +277,19 @@ const BeliToken: React.FC<BeliTokenProps> = ({ children }) => {
           tanggal: currentDate.toLocaleDateString(),
           idTransaksi: response.data.response.data["transaction-id"] || response.data.metadata.requestId || "unknown",
           tokenNumber: tokenNumberFromResponse,
+          dataCubic: formattedCubicData, // Add cubic meter data to transaction details
           pelanggan: {
             id: nomorPDAM,
-            nama: response.data.response.data["customer-name"] || "Pelanggan PDAM",
-            alamat: response.data.response.data["address"] || "Alamat tidak tersedia",
+            nama: response.data.response.data["customer-name"] || customerData?.name || "Pelanggan PDAM",
+            alamat: response.data.response.data["address"] || customerData?.address || "Alamat tidak tersedia",
             golongan: response.data.response.data["customer-type"] || "Reguler",
+            meter_number: nomorPDAM,
+            meter_config: customerData?.meter_config || "-",
           },
           rincian: {
             pemakaian: response.data.response.data["usage"] || "N/A",
             tagihan: formatCurrency(purchaseAmount),
+            cubic: formattedCubicData, // Also store the cubic data in the rincian object
             biayaAdmin: response.data.response.data["admin-fee"] || "Rp. 2.500,-",
             total: formatCurrency(purchaseAmount),
           },
@@ -378,7 +495,7 @@ const BeliToken: React.FC<BeliTokenProps> = ({ children }) => {
                 borderRadius: 12,
                 paddingHorizontal: 15,
                 paddingVertical: 14,
-                marginBottom: 20,
+                marginBottom: 8,
                 backgroundColor: "#F8FAFC",
               }}>
               <TextInput
@@ -390,6 +507,28 @@ const BeliToken: React.FC<BeliTokenProps> = ({ children }) => {
                 placeholderTextColor="#94A3B8"
               />
             </View>
+
+            {/* Informasi Cubic Meter */}
+            {cubicMeters !== null && (
+              <View
+                style={{
+                  marginBottom: 20,
+                  backgroundColor: "#F0F9FF",
+                  padding: 12,
+                  borderRadius: 8,
+                  borderLeftWidth: 4,
+                  borderLeftColor: "#2181FF",
+                }}>
+                <Text style={{ color: "#0369A1", fontSize: 14 }}>Dengan nominal {nominal}, Anda mendapatkan:</Text>
+                <Text style={{ color: "#0369A1", fontSize: 16, fontWeight: "700", marginTop: 4 }}>{cubicMeters.toFixed(2)} m³ air</Text>
+              </View>
+            )}
+
+            {isFetchingCubic && (
+              <View style={{ marginBottom: 20, alignItems: "center" }}>
+                <Text style={{ color: "#64748B", fontSize: 14 }}>Menghitung volume air...</Text>
+              </View>
+            )}
 
             {/* PIN Transaksi hanya muncul jika showPinInput true */}
             {showPinInput && (
@@ -526,7 +665,7 @@ const BeliToken: React.FC<BeliTokenProps> = ({ children }) => {
                   backgroundColor: "#F0F9FF",
                   borderRadius: 12,
                   padding: 20,
-                  marginBottom: 24,
+                  marginBottom: 12,
                   alignItems: "center",
                 }}>
                 <Text style={{ fontSize: 14, color: "#0369A1", marginBottom: 8 }}>Token Anda:</Text>
@@ -554,6 +693,20 @@ const BeliToken: React.FC<BeliTokenProps> = ({ children }) => {
                   <Text style={{ color: "#0369A1", fontWeight: "600" }}>Salin Token</Text>
                 </TouchableOpacity>
               </View>
+
+              {/* Display cubic meters in success modal */}
+              {cubicMeters !== null && (
+                <View
+                  style={{
+                    backgroundColor: "#F1F5F9",
+                    borderRadius: 12,
+                    padding: 16,
+                    marginBottom: 24,
+                  }}>
+                  <Text style={{ fontSize: 14, color: "#64748B", marginBottom: 4 }}>Volume Air:</Text>
+                  <Text style={{ fontSize: 18, fontWeight: "700", color: "#334155" }}>{cubicMeters.toFixed(2)} m³</Text>
+                </View>
+              )}
 
               <TouchableOpacity onPress={closeSuccessModal} style={{ borderRadius: 12, overflow: "hidden" }}>
                 <LinearGradient
@@ -598,6 +751,7 @@ const BeliToken: React.FC<BeliTokenProps> = ({ children }) => {
               }}>
               {tokenNumber}
             </Text>
+            {cubicMeters !== null && <Text style={{ fontSize: 14, color: "#0369A1", marginBottom: 8 }}>Volume Air: {cubicMeters.toFixed(2)} m³</Text>}
             <TouchableOpacity
               onPress={handleCopyToken}
               style={{ borderWidth: 1, borderColor: "#0369A1", borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8 }}>
