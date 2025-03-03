@@ -23,6 +23,7 @@ const chartData = {
 const Home = () => {
   const [customerType, setCustomerType] = useState("prabayar");
   const [customerData, setCustomerData] = useState(null);
+  const [totalSpending, setTotalSpending] = useState(0);
   const [showAlert, setShowAlert] = useState(false);
   const [alertMessage, setAlertMessage] = useState("");
   const router = useRouter();
@@ -59,19 +60,19 @@ const Home = () => {
     fillShadowGradientOpacity: 0.3,
   };
 
+  // Fetch customer data untuk menampilkan informasi pelanggan
   useEffect(() => {
     const fetchCustomerData = async () => {
       try {
-        // Retrieve login credentials and tokens from AsyncStorage
+        // Ambil kredensial dan token dari AsyncStorage
         const username = await AsyncStorage.getItem("username");
         const password = await AsyncStorage.getItem("password");
-        const dataToken = await AsyncStorage.getItem("userToken"); // Changed to userToken as per your authStorage
+        const dataToken = await AsyncStorage.getItem("userToken");
         const consId = process.env.EXPO_PUBLIC_WH8_CONS_ID?.replace(/[",]/g, "") || "admin-wh8";
         const accessToken = await AsyncStorage.getItem("access_token");
 
         if (!username || !password || !dataToken || !accessToken) {
           console.log("Missing credentials:", { username, password, dataToken, accessToken });
-          // Save username and password temporarily when logging in
           await AsyncStorage.setItem("username", username || "");
           await AsyncStorage.setItem("password", password || "");
           return;
@@ -79,27 +80,22 @@ const Home = () => {
 
         console.log("Fetching customer data with credentials:", { username, dataToken });
 
-        // Fetch customer data using the provided API endpoint
         const response = await api.post(
-          "/getDataConstumer", // Removed the full URL to use the baseURL from api.js
+          "/getDataConstumer",
           {
-            username: username,
-            password: password,
+            username,
+            password,
             data_token: dataToken,
             cons_id: consId,
             access_token: accessToken,
           },
           {
-            headers: {
-              "Content-Type": "application/json",
-            },
+            headers: { "Content-Type": "application/json" },
           }
         );
 
-        // Check if the API response is successful
         if (response.data.metadata.code === 200) {
           console.log("Customer data fetched successfully:", response.data.response.data);
-          // Save customer data to state
           setCustomerData(response.data.response.data);
         } else {
           console.log("API returned error:", response.data.metadata);
@@ -114,6 +110,52 @@ const Home = () => {
     fetchCustomerData();
   }, []);
 
+  // Fetch transaction history untuk menghitung total purchase dari semua tanggal
+  useEffect(() => {
+    const fetchTransactionHistory = async () => {
+      try {
+        // Ambil kredensial dari AsyncStorage
+        const username = await AsyncStorage.getItem("username");
+        const password = await AsyncStorage.getItem("password");
+        const dataToken = await AsyncStorage.getItem("userToken");
+        const consId = process.env.EXPO_PUBLIC_WH8_CONS_ID?.replace(/[",]/g, "") || "admin-wh8";
+        const accessToken = await AsyncStorage.getItem("access_token");
+
+        if (!username || !password || !dataToken || !accessToken) {
+          console.log("Missing credentials for transaction history");
+          return;
+        }
+
+        const requestBody = {
+          username,
+          password,
+          data_token: dataToken,
+          cons_id: consId,
+          access_token: accessToken,
+          meter_number: 47500420436,
+          id_constumer: "POLMAN3",
+        };
+
+        const response = await api.post("https://pdampolman.airmurah.id/api/histotyTrans", requestBody, {
+          headers: { "Content-Type": "application/json" },
+        });
+
+        if (response.data.metadata.code === 200) {
+          const transactions = response.data.response.data;
+          // Kalkulasikan total purchase dari semua transaksi
+          const sum = transactions.reduce((acc, curr) => acc + Number(curr.purchase), 0);
+          setTotalSpending(sum);
+        } else {
+          console.log("Error fetching transaction history:", response.data.metadata.message);
+        }
+      } catch (error) {
+        console.error("Error fetching transaction history:", error);
+      }
+    };
+
+    fetchTransactionHistory();
+  }, []);
+
   const showAnimatedAlert = (message) => {
     setAlertMessage(message);
     setShowAlert(true);
@@ -121,16 +163,8 @@ const Home = () => {
     opacity.setValue(0);
 
     Animated.parallel([
-      Animated.timing(slideAnim, {
-        toValue: 0,
-        duration: 300,
-        useNativeDriver: true,
-      }),
-      Animated.timing(opacity, {
-        toValue: 1,
-        duration: 300,
-        useNativeDriver: true,
-      }),
+      Animated.timing(slideAnim, { toValue: 0, duration: 300, useNativeDriver: true }),
+      Animated.timing(opacity, { toValue: 1, duration: 300, useNativeDriver: true }),
     ]).start();
 
     setTimeout(() => {
@@ -140,16 +174,8 @@ const Home = () => {
 
   const hideAnimatedAlert = () => {
     Animated.parallel([
-      Animated.timing(slideAnim, {
-        toValue: -100,
-        duration: 300,
-        useNativeDriver: true,
-      }),
-      Animated.timing(opacity, {
-        toValue: 0,
-        duration: 300,
-        useNativeDriver: true,
-      }),
+      Animated.timing(slideAnim, { toValue: -100, duration: 300, useNativeDriver: true }),
+      Animated.timing(opacity, { toValue: 0, duration: 300, useNativeDriver: true }),
     ]).start(() => {
       setShowAlert(false);
     });
@@ -178,7 +204,7 @@ const Home = () => {
     }
   };
 
-  // Function to format amount with Rp.
+  // Fungsi untuk format rupiah
   const formatRupiah = (amount) => {
     return new Intl.NumberFormat("id-ID", {
       style: "currency",
@@ -296,14 +322,14 @@ const Home = () => {
         <View className="mt-5">
           <View className="flex-row justify-between">
             <Text className="text-white">ID PDAM</Text>
-            <Text className="text-white">{customerType === "pascabayar" ? "Tagihan Bulan Ini" : "Pengeluaran Bulan Ini"}</Text>
+            <Text className="text-white">{customerType === "pascabayar" ? "Tagihan Bulan Ini" : "Total Pengeluaran"}</Text>
           </View>
           <View className="flex-row justify-between mt-3 items-center">
             <TouchableOpacity className="flex-row items-center" onPress={handleCopyPDAMID} activeOpacity={0.7}>
               <Text className="text-white text-lg font-medium">{customerData?.meter_number || "Tidak tersedia"}</Text>
               <Image source={icons.copy} className="w-4 h-4 ml-2" tintColor="white" />
             </TouchableOpacity>
-            <Text className="text-white text-lg font-bold">{formatRupiah(50000)}</Text>
+            <Text className="text-white text-lg font-bold">{formatRupiah(totalSpending)}</Text>
           </View>
         </View>
 
@@ -328,34 +354,7 @@ const Home = () => {
         </View>
       </LinearGradient>
 
-      {/* Customer Details */}
-      {customerData && (
-        <View className="mx-5 mt-6 p-4 bg-white rounded-xl shadow-md">
-          <Text className="text-black text-lg font-bold mb-4">Informasi Pelanggan</Text>
-          <View className="space-y-2">
-            <View className="flex-row justify-between">
-              <Text className="text-gray-600">NIK</Text>
-              <Text className="text-black font-medium">{customerData.nik || "-"}</Text>
-            </View>
-            <View className="flex-row justify-between">
-              <Text className="text-gray-600">Telephone</Text>
-              <Text className="text-black font-medium">{customerData.phone || "-"}</Text>
-            </View>
-            <View className="flex-row justify-between">
-              <Text className="text-gray-600">Email</Text>
-              <Text className="text-black font-medium">{customerData.email || "-"}</Text>
-            </View>
-            <View className="flex-row justify-between">
-              <Text className="text-gray-600">Konfigurasi Meter</Text>
-              <Text className="text-black font-medium">{customerData.meter_config || "-"}</Text>
-            </View>
-            <View className="flex-row justify-between">
-              <Text className="text-gray-600">Alamat</Text>
-              <Text className="text-black font-medium text-right">{customerData.address || "-"}</Text>
-            </View>
-          </View>
-        </View>
-      )}
+     
 
       {/* Riwayat Penggunaan Air */}
       <View className="mb-[250px]">

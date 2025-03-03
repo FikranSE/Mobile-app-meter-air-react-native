@@ -1,3 +1,4 @@
+// BeliToken.tsx - Modified to pass tokenNumber to DetailTransaksi
 import React, { ReactNode, useState, useRef, useEffect } from "react";
 import { View, Text, TextInput, TouchableOpacity, Image, ScrollView, Animated, Modal, Alert } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -8,8 +9,6 @@ import * as Clipboard from "expo-clipboard";
 import { icons, images } from "@/constants";
 import { router } from "expo-router";
 
-// Hapus interface CustomerData dan state terkait
-// karena kita tidak lagi melakukan pengecekan ID PDAM
 interface BeliTokenProps {
   children: ReactNode;
 }
@@ -25,6 +24,9 @@ const BeliToken: React.FC<BeliTokenProps> = ({ children }) => {
   const [isLoading, setIsLoading] = useState(false);
 
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+
+  // Transaction details to pass to DetailTransaksi
+  const [transactionDetails, setTransactionDetails] = useState(null);
 
   // Animasi untuk pesan error
   const slideAnim = useRef(new Animated.Value(-100)).current;
@@ -62,14 +64,6 @@ const BeliToken: React.FC<BeliTokenProps> = ({ children }) => {
   };
 
   const validateForm = () => {
-    // Contoh minimal validasi nomor PDAM jika ingin (opsional)
-    // if (!nomorPDAM) {
-    //   setWarning("Nomor meter PDAM tidak boleh kosong");
-    //   showErrorMessage();
-    //   return;
-    // }
-
-    // Validasi minimal nominal 10.000
     const numericValue = nominal.replace(/\D/g, "");
     if (numericValue === "" || parseInt(numericValue, 10) < 10000) {
       setWarning("Minimal nominal pembelian adalah Rp 10.000");
@@ -139,8 +133,6 @@ const BeliToken: React.FC<BeliTokenProps> = ({ children }) => {
 
       const purchaseAmount = nominal.replace(/\D/g, "");
 
-      // Kita tidak cek data pelanggan,
-      // langsung gunakan nomorPDAM dan default "POLMAN3" untuk id_constumer.
       const requestBody = {
         username,
         password,
@@ -162,7 +154,35 @@ const BeliToken: React.FC<BeliTokenProps> = ({ children }) => {
 
       if (response.data.metadata.code === 200) {
         const tokenNumberFromResponse = response.data.response.data["token-number"];
+        const currentDate = new Date();
+
+        // Store the transaction details
+        const transDetails = {
+          metodePembayaran: "PDAM Direct", // Assuming this is the method, modify as needed
+          status: "Berhasil",
+          waktu: currentDate.toLocaleTimeString(),
+          tanggal: currentDate.toLocaleDateString(),
+          idTransaksi: response.data.response.data["transaction-id"] || response.data.metadata.requestId || "unknown",
+          tokenNumber: tokenNumberFromResponse,
+          pelanggan: {
+            id: nomorPDAM,
+            nama: response.data.response.data["customer-name"] || "Pelanggan PDAM",
+            alamat: response.data.response.data["address"] || "Alamat tidak tersedia",
+            golongan: response.data.response.data["customer-type"] || "Reguler",
+          },
+          rincian: {
+            pemakaian: response.data.response.data["usage"] || "N/A",
+            tagihan: formatCurrency(purchaseAmount),
+            biayaAdmin: response.data.response.data["admin-fee"] || "Rp. 2.500,-",
+            total: formatCurrency(purchaseAmount),
+          },
+        };
+
+        // Save transaction details to AsyncStorage for retrieving in DetailTransaksi
+        await AsyncStorage.setItem("lastTokenTransaction", JSON.stringify(transDetails));
+
         setTokenNumber(tokenNumberFromResponse);
+        setTransactionDetails(transDetails);
         setShowSuccessModal(true);
 
         // Animasi modal sukses
@@ -205,6 +225,15 @@ const BeliToken: React.FC<BeliTokenProps> = ({ children }) => {
       }),
     ]).start(() => {
       setShowSuccessModal(false);
+
+      // Navigate to DetailTransaksi with tokenNumber and transaction details
+      if (transactionDetails) {
+        router.push({
+          pathname: "/(root)/detail-transaksi",
+          params: { tokenNumber: tokenNumber },
+        });
+      }
+
       // Reset nilai animasi modal
       successAnimScale.setValue(0.8);
       successAnimOpacity.setValue(0);
