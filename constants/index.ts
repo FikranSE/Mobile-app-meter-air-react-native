@@ -48,7 +48,7 @@ import onboarding1 from "@/assets/images/onboarding1.png";
 import onboarding2 from "@/assets/images/onboarding2.png";
 import onboarding3 from "@/assets/images/onboarding3.png";
 import signUpWater from "@/assets/images/signUpWater.jpg";
-import waterDrop from "@/assets/images/water-drop.png";
+import waterDrop from "@/assets/images/favicon.png";
 import banner from "@/assets/images/banner.jpeg";
 import logo from "@/assets/images/logo.jpg";
 import berita1 from "@/assets/images/berita1.jpg";

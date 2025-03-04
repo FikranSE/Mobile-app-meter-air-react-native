@@ -20,7 +20,7 @@ const Page = () => {
   }
 
   // If not signed in, redirect to welcome screen
-  return <Redirect href="/(auth)/welcome" />;
+  return <Redirect href="/(auth)/sign-in" />;
 };
 
 export default Page;
