@@ -655,6 +655,7 @@ const BeliToken: React.FC<BeliTokenProps> = ({ children }) => {
 
               {[10000, 25000, 50000, 75000, 100000].map((amount) => (
                 <TouchableOpacity
+                className=""
                   key={amount}
                   onPress={() => handleTokenSelection(`Rp. ${amount.toLocaleString()}`)}
                  >

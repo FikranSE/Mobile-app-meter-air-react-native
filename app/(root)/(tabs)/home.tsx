@@ -7,6 +7,7 @@ import { icons, images } from "@/constants";
 import * as Clipboard from "expo-clipboard";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { api } from "@/lib/api";
+import axios from "axios"; // Make sure axios is imported correctly
 
 const Home = () => {
   const [customerType, setCustomerType] = useState("prabayar");
@@ -96,23 +97,48 @@ const Home = () => {
           }
         );
 
-        if (customerResponse.data.metadata.code === 200) {
-          const customerResponseData = customerResponse.data.response.data;
-          setCustomerData(customerResponseData);
+        console.log("Customer Response:", customerResponse);
 
-          // Check id_constumer to determine customer type
-          if (customerResponseData && customerResponseData.id_constumer) {
-            // If id_constumer contains "PASCA", set as pascabayar, otherwise prabayar
-            const isPostpaid = customerResponseData.id_constumer.includes("PASCA");
-            setCustomerType(isPostpaid ? "pascabayar" : "prabayar");
-            console.log("Customer type set to:", isPostpaid ? "pascabayar" : "prabayar");
+        if (customerResponse.data.metadata.code === 200) {
+          const customerDataArray = customerResponse.data.response.data;
+          if (customerDataArray && customerDataArray.length > 0) {
+            const customerResponseData = customerDataArray[0]; // Ambil data pelanggan pertama
+            setCustomerData(customerResponseData);
+
+            // Check if id_constumer and meter_number exist
+            if (customerResponseData && customerResponseData.id_constumer && customerResponseData.meter_number) {
+              const isPostpaid = customerResponseData.id_constumer.includes("PASCA");
+              setCustomerType(isPostpaid ? "pascabayar" : "prabayar");
+            } else {
+              console.error("Missing customer data:", {
+                id_constumer: customerResponseData?.id_constumer,
+                meter_number: customerResponseData?.meter_number,
+              });
+              setAlertMessage("Data pelanggan tidak lengkap.");
+              setShowAlert(true);
+              return;
+            }
+          } else {
+            console.error("No customer data found.");
+            setAlertMessage("Data pelanggan tidak ditemukan.");
+            setShowAlert(true);
+            return;
           }
         } else {
           console.log("Customer data fetch error:", customerResponse.data.metadata.message);
+          setAlertMessage("Gagal mengambil data pelanggan.");
+          setShowAlert(true);
         }
 
         // Construct requestBody dynamically using the fetched customer data
-        const { meter_number, id_constumer } = customerResponse.data.response.data;
+        const { meter_number, id_constumer } = customerResponse.data.response.data[0]; // Ambil data pelanggan pertama
+
+        if (!meter_number || !id_constumer) {
+          console.error("Missing customer data:", { meter_number, id_constumer });
+          setAlertMessage("Data pelanggan tidak lengkap.");
+          setShowAlert(true);
+          return;
+        }
 
         const requestBody = {
           username,
@@ -141,37 +167,28 @@ const Home = () => {
 
           // Calculate total cubic water usage
           const totalCubic = transactionData.reduce((acc, curr) => {
-            // Assuming the cubic data is stored in a field named cubic or similar
-            // Check if cubic field exists and is a number
             const cubicValue = Number(curr.cubic || 0);
             return acc + cubicValue;
           }, 0);
-          // Limit to 3 digits only - convert to string and take first 3 characters
           const formattedCubic = String(totalCubic).substring(0, 3);
           setTotalCubic(formattedCubic);
 
           // Prepare chart data from transactions
           if (transactionData.length > 0) {
-            // Sort transactions by date
             const sortedTransactions = [...transactionData].sort((a, b) => {
               return new Date(a.date) - new Date(b.date);
             });
 
-            // Get the last 7 transactions or all if less than 7
             const lastTransactions = sortedTransactions.slice(-7);
 
             const labels = lastTransactions.map((trans, index) => {
-              // Try to parse the date, if it fails use the index + 1 as label
               try {
                 const date = new Date(trans.date);
-                // Check if date is valid
                 if (!isNaN(date.getTime())) {
                   return date.getDate().toString();
                 }
-                // Fallback to index + 1
                 return (index + 1).toString();
               } catch (e) {
-                // If date parsing fails, use the index + 1 as label
                 return (index + 1).toString();
               }
             });
@@ -250,7 +267,6 @@ const Home = () => {
     }
   };
 
-  // Fungsi untuk format rupiah
   const formatRupiah = (amount) => {
     return new Intl.NumberFormat("id-ID", {
       style: "currency",
@@ -259,7 +275,6 @@ const Home = () => {
     }).format(amount || 0);
   };
 
-  // Get current month name in Indonesian
   const getCurrentMonth = () => {
     const months = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
     const now = new Date();

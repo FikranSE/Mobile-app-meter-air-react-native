@@ -12,6 +12,9 @@ const TransactionHistory = () => {
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [customerData, setCustomerData] = useState(null);
+  const [customerType, setCustomerType] = useState("prabayar"); // Declare customerType state here
+  const [alertMessage, setAlertMessage] = useState("");
+  const [showAlert, setShowAlert] = useState(false);
 
   // Fungsi untuk format rupiah
   const formatRupiah = (amount) => {
@@ -35,7 +38,7 @@ const TransactionHistory = () => {
 
         if (!username || !password || !dataToken || !accessToken) {
           console.log("Missing credentials:", { username, password, dataToken, accessToken });
-          // Jika kredensial belum lengkap, simpan username dan password secara sementara
+          // Simpan username dan password sementara jika belum lengkap
           await AsyncStorage.setItem("username", username || "");
           await AsyncStorage.setItem("password", password || "");
           return;
@@ -57,13 +60,45 @@ const TransactionHistory = () => {
         );
 
         if (customerResponse.data.metadata.code === 200) {
-          setCustomerData(customerResponse.data.response.data);
+          const customerDataArray = customerResponse.data.response.data;
+          if (customerDataArray && customerDataArray.length > 0) {
+            const customerResponseData = customerDataArray[0]; // Ambil data pelanggan pertama
+            setCustomerData(customerResponseData);
+
+            // Cek jika id_constumer dan meter_number ada
+            if (customerResponseData?.id_constumer && customerResponseData?.meter_number) {
+              const isPostpaid = customerResponseData.id_constumer.includes("PASCA");
+              setCustomerType(isPostpaid ? "pascabayar" : "prabayar"); // Set customer type
+            } else {
+              console.error("Missing customer data:", {
+                id_constumer: customerResponseData?.id_constumer,
+                meter_number: customerResponseData?.meter_number,
+              });
+              setAlertMessage("Data pelanggan tidak lengkap.");
+              setShowAlert(true);
+              return;
+            }
+          } else {
+            console.error("No customer data found.");
+            setAlertMessage("Data pelanggan tidak ditemukan.");
+            setShowAlert(true);
+            return;
+          }
         } else {
           console.log("Customer data fetch error:", customerResponse.data.metadata.message);
+          setAlertMessage("Gagal mengambil data pelanggan.");
+          setShowAlert(true);
         }
 
         // Construct requestBody dynamically using the fetched customer data
-        const { meter_number, id_constumer } = customerResponse.data.response.data;
+        const { meter_number, id_constumer } = customerResponse.data.response.data[0];
+
+        if (!meter_number || !id_constumer) {
+          console.error("Missing customer data:", { meter_number, id_constumer });
+          setAlertMessage("Data pelanggan tidak lengkap.");
+          setShowAlert(true);
+          return;
+        }
 
         const requestBody = {
           username,
