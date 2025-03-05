@@ -12,6 +12,7 @@ import google from "@/assets/icons/google.png";
 import send from "@/assets/icons/send.png";
 import home from "@/assets/icons/home.png";
 import add from "@/assets/icons/add.png";
+import loading from "@/assets/icons/loading.png";
 import list from "@/assets/icons/list.png";
 import account from "@/assets/icons/account.png";
 import setting from "@/assets/icons/setting.png";
@@ -33,6 +34,7 @@ import bell from "@/assets/icons/bell.png";
 import filter from "@/assets/icons/filter.png";
 import point from "@/assets/icons/point.png";
 import cancel from "@/assets/icons/cancel.png";
+import meter from "@/assets/icons/meter.png";
 import profile from "@/assets/icons/profile.png";
 import search from "@/assets/icons/search.png";
 import selectedMarker from "@/assets/icons/selected-marker.png";
@@ -122,7 +124,9 @@ export const icons = {
   error,
   add,
   send,
-  account
+  account,
+  meter,
+  loading
 };
 
 export const onboarding = [

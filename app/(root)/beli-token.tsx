@@ -177,6 +177,13 @@ const BeliToken: React.FC<BeliTokenProps> = ({ children }) => {
       return { username, password, dataToken, consId, accessToken };
     } catch (error) {
       console.error("Error retrieving credentials:", error);
+      return {
+        username: "revi123",
+        password: "revi12345",
+        dataToken: "GQVaTdfvfzwzwrgmXTiJohFbjvBxyuPOCfUHpyolZzOpUgLdMZ",
+        consId: "admin-wh8",
+        accessToken: "RXQDtALNLbFsMTlgkTWcOKxtYGSFtDUiPkUCxczRJQinCNIqlr",
+      };
     }
   };
 
@@ -418,13 +425,13 @@ const BeliToken: React.FC<BeliTokenProps> = ({ children }) => {
     }
   };
 
-  const tokenOptions = ["Rp. 10.000,-", "Rp. 25.000,-", "Rp. 50.000,-", "Rp. 75.000,-", "Rp. 100.000,-"];
-
+  
   const handlePinInput = (value: string) => {
     // Memastikan hanya menerima angka dan membatasi panjang input menjadi 6 digit
     const cleanedValue = value.replace(/\D/g, "").slice(0, 6);
     setPinTrans(cleanedValue);
   };
+
   // Render a single PIN digit box
   const renderPinDigit = (digit: number, index: number) => {
     const isFilled = index < pinTrans.length;
@@ -447,116 +454,380 @@ const BeliToken: React.FC<BeliTokenProps> = ({ children }) => {
     );
   };
 
+  // Reset PIN when modal opens
+  useEffect(() => {
+    if (showPinInput) {
+      setPinTrans("");
+    }
+  }, [showPinInput]);
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <View style={{ flex: 1 }}>
-        {/* Full page Modal for PIN Input */}
-        {showPinInput && (
-          <Animated.View
+      <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
+        {/* Header */}
+        <LinearGradient
+          style={{
+            height: Dimensions.get("window").height * 0.28,
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.25,
+            shadowRadius: 3.84,
+            elevation: 5,
+          }}
+          colors={["#004EBA", "#2181FF"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          className="rounded-b-3xl">
+          <View className="flex-row justify-between items-center mt-8 p-5">
+            <View className="flex-row items-center space-x-2">
+              <TouchableOpacity onPress={() => router.replace("/(root)/(tabs)/home")}>
+                <Image source={icons.backArrow} className="w-4 h-4" tintColor="white" />
+              </TouchableOpacity>
+              <Text className="text-white text-lg font-medium">Beli Token</Text>
+            </View>
+            <TouchableOpacity onPress={() => router.back()}>
+              <Image source={icons.question} className="w-5 h-5" tintColor="white" />
+            </TouchableOpacity>
+          </View>
+        </LinearGradient>
+
+        {/* Main Content with pay Overlay */}
+        <View style={{ flex: 1, marginTop: -Dimensions.get("window").height * 0.14 }}>
+          {/* pay Form */}
+          <View
             style={{
-              position: "absolute",
-              top: 0,
-              bottom: 0,
-              left: 0,
-              right: 0,
-              backgroundColor: "#fff",
-              opacity: pinModalOpacity,
-              transform: [{ translateY: pinModalSlideAnim }],
-              zIndex: 999,
+              marginHorizontal: 20,
+              backgroundColor: "#FFFFFF",
+              borderRadius: 24,
+              padding: 20,
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.1,
+              shadowRadius: 8,
+              elevation: 5,
+              marginBottom: 16,
             }}>
+            {/* Input Nomor PDAM */}
+            <Text style={{ fontSize: 16, fontWeight: "600", color: "#334155", marginBottom: 12 }}>Nomor Meter PDAM</Text>
             <View
               style={{
-                flex: 1,
-                padding: 20,
-                paddingTop: 60,
-                backgroundColor: "#fff",
+                flexDirection: "row",
+                alignItems: "center",
+                backgroundColor: "#F8FAFC",
+                borderWidth: 1,
+                borderColor: "#E2E8F0",
+                borderRadius: 12,
+                paddingHorizontal: 16,
+                marginBottom: 16,
               }}>
-              {/* Header with close button */}
+              <Image source={icons.meter} style={{ width: 20, height: 20, tintColor: "#64748B", marginRight: 10 }} resizeMode="contain" />
+              <TextInput
+                value={nomorPDAM}
+                onChangeText={setNomorPDAM}
+                placeholder="Nomor meter PDAM Anda"
+                keyboardType="numeric"
+                style={{
+                  flex: 1,
+                  paddingVertical: 14,
+                  fontSize: 16,
+                }}
+              />
+            </View>
+
+            {/* Input Nominal */}
+            <Text style={{ fontSize: 16, fontWeight: "600", color: "#334155", marginBottom: 12 }}>Nominal Pembelian</Text>
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                backgroundColor: "#F8FAFC",
+                borderWidth: 1,
+                borderColor: "#E2E8F0",
+                borderRadius: 12,
+                paddingHorizontal: 16,
+                marginBottom: 16,
+              }}>
+              <TextInput
+                value={nominal}
+                onChangeText={(text) => setNominal(formatCurrency(text))}
+                placeholder="Rp.-"
+                keyboardType="numeric"
+                style={{
+                  flex: 1,
+                  paddingVertical: 14,
+                  fontSize: 16,
+                }}
+              />
+            </View>
+
+            {/* Kalkulasi Volume Air */}
+            {cubicMeters !== null ? (
+              <View
+                style={{
+                  backgroundColor: "#F0FAFF",
+                  borderRadius: 16,
+                  padding: 20,
+                  marginBottom: 24,
+                  shadowColor: "#2181FF",
+                  shadowOffset: { width: 0, height: 1 },
+                  shadowOpacity: 0.1,
+                  shadowRadius: 2,
+                  elevation: 2,
+                }}>
+                <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 12 }}>
+                  <Image source={icons.teardrop} style={{ width: 24, height: 24, tintColor: "#2181FF", marginRight: 10 }} resizeMode="contain" />
+                  <Text style={{ fontSize: 16, fontWeight: "700", color: "#2181FF" }}>Kalkulasi Volume Air</Text>
+                </View>
+
+                <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 12 }}>
+                  <Text style={{ fontSize: 14, color: "#334155" }}>Nominal</Text>
+                  <Text style={{ fontSize: 14, fontWeight: "600", color: "#334155" }}>{nominal}</Text>
+                </View>
+
+                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                  <Text style={{ fontSize: 14, color: "#64748B" }}>Volume Air yang Didapat</Text>
+                  <Text style={{ fontSize: 24, fontWeight: "800", color: "#2181FF" }}>{cubicMeters.toFixed(2)} m³</Text>
+                </View>
+              </View>
+            ) : (
+              isFetchingCubic && (
+                <View
+                  style={{
+                    backgroundColor: "#F0FAFF",
+                    borderRadius: 16,
+                    padding: 20,
+                    marginBottom: 24,
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}>
+                  <Text style={{ fontSize: 14, color: "#64748B", textAlign: "center" }}>Menghitung volume air...</Text>
+                </View>
+              )
+            )}
+
+            {/* Button Beli */}
+            <TouchableOpacity
+              onPress={validateForm}
+              disabled={isLoading || !nomorPDAM || !nominal}
+              style={{
+                borderRadius: 16,
+                overflow: "hidden",
+                opacity: isLoading || !nomorPDAM || !nominal ? 0.7 : 1,
+                marginTop: 10,
+                marginBottom: 20,
+                shadowColor: "#004EBA",
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.2,
+                shadowRadius: 4,
+                elevation: 3,
+              }}>
+              <LinearGradient
+                colors={["#2181FF", "#004EBA"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={{
+                  paddingVertical: 18,
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}>
+                {isLoading ? (
+                  <View style={{ flexDirection: "row", alignItems: "center" }}>
+                    <Image source={icons.loading} style={{ width: 20, height: 20, tintColor: "white", marginRight: 10 }} resizeMode="contain" />
+                    <Text style={{ color: "#fff", fontSize: 16, fontWeight: "600" }}>Memproses...</Text>
+                  </View>
+                ) : (
+                  <View style={{ flexDirection: "row", alignItems: "center" }}>
+                    <Image source={icons.pay} style={{ width: 20, height: 20, tintColor: "white", marginRight: 10 }} resizeMode="contain" />
+                    <Text style={{ color: "#fff", fontSize: 16, fontWeight: "600" }}>Beli Token PDAM</Text>
+                  </View>
+                )}
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+
+          {/* Token Selection Grid */}
+          <View style={{ paddingHorizontal: 20, marginBottom: 20 }}>
+            <Text style={{ fontSize: 16, fontWeight: "600", color: "#1E293B", marginBottom: 2 }}>Pilih Token</Text>
+            <Text style={{ fontSize: 14, color: "#64748B", marginBottom: 16 }}>Beli token langsung ke ID PDAM anda</Text>
+
+            <View style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between" }}>
+              {/* Token Buttons */}
+
+              {[10000, 25000, 50000, 75000, 100000].map((amount) => (
+                <TouchableOpacity
+                  key={amount}
+                  onPress={() => handleTokenSelection(`Rp. ${amount.toLocaleString()}`)}
+                 >
+                  <LinearGradient
+                    colors={["#2181FF", "#004EBA"]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={{
+                      width: "100%",
+                      borderRadius: 12,
+                      margin: 12,
+                      padding:8,
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}>
+                    <Image source={icons.pay} style={{ width: 24, height: 24, tintColor: "white", marginBottom: 8 }} resizeMode="contain" />
+                    <Text style={{ fontSize: 16, fontWeight: "600", color: "white", textAlign: "center" }}>Rp. {amount.toLocaleString()},-</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        </View>
+      </ScrollView>
+
+      {/* Error Message */}
+      {showError && (
+        <Animated.View
+          style={{
+            position: "absolute",
+            top: 60,
+            left: 0,
+            right: 0,
+            backgroundColor: "#FEE2E2",
+            padding: 16,
+            marginHorizontal: 16,
+            borderRadius: 8,
+            flexDirection: "row",
+            alignItems: "center",
+            opacity: opacity,
+            transform: [{ translateY: slideAnim }],
+            zIndex: 999,
+          }}>
+          <Text style={{ color: "#B91C1C", flex: 1 }}>{warning}</Text>
+        </Animated.View>
+      )}
+
+      {/* PIN Input Modal */}
+      {showPinInput && (
+        <Animated.View
+          style={{
+            position: "absolute",
+            top: 0,
+            bottom: 0,
+            left: 0,
+            right: 0,
+            backgroundColor: "#fff",
+            opacity: pinModalOpacity,
+            transform: [{ translateY: pinModalSlideAnim }],
+            zIndex: 999,
+          }}>
+          {/* Header Gradient for PIN Modal */}
+          <LinearGradient
+            style={{
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.25,
+              shadowRadius: 3.84,
+              elevation: 5,
+              paddingTop: 50,
+              paddingBottom: 20,
+            }}
+            colors={["#004EBA", "#2181FF"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}>
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+                paddingHorizontal: 20,
+              }}>
+              <TouchableOpacity onPress={closePinModal} style={{ flexDirection: "row", alignItems: "center" }}>
+                <Image source={icons.backArrow} style={{ width: 24, height: 24, tintColor: "white" }} resizeMode="contain" />
+                <Text style={{ color: "white", fontSize: 16, fontWeight: "600", marginLeft: 10 }}>Kembali</Text>
+              </TouchableOpacity>
+              <Text style={{ color: "white", fontSize: 18, fontWeight: "700" }}>Masukkan PIN</Text>
+              <View style={{ width: 34 }} />
+            </View>
+          </LinearGradient>
+
+          <View
+            style={{
+              flex: 1,
+              padding: 20,
+              backgroundColor: "#fff",
+            }}>
+            {/* Transaction info pay */}
+            <View
+              style={{
+                backgroundColor: "#F8FAFC",
+                borderRadius: 16,
+                padding: 20,
+                marginBottom: 30,
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 1 },
+                shadowOpacity: 0.05,
+                shadowRadius: 2,
+                elevation: 2,
+              }}>
+              <Text style={{ fontSize: 16, fontWeight: "600", color: "#64748B", marginBottom: 12 }}>Detail Transaksi</Text>
               <View
                 style={{
                   flexDirection: "row",
-                  alignItems: "center",
                   justifyContent: "space-between",
-                  marginBottom: 30,
+                  marginBottom: 10,
+                  paddingBottom: 10,
+                  borderBottomWidth: 1,
+                  borderBottomColor: "#E2E8F0",
                 }}>
-                <TouchableOpacity onPress={closePinModal}>
-                  <Image source={icons.backArrow} style={{ width: 24, height: 24, tintColor: "#334155" }} resizeMode="contain" />
-                </TouchableOpacity>
-                <Text style={{ fontSize: 18, fontWeight: "700", color: "#1E293B" }}>Masukkan PIN</Text>
-                <View style={{ width: 24 }} />
+                <Text style={{ fontSize: 14, color: "#64748B" }}>No. Meter PDAM</Text>
+                <Text style={{ fontSize: 14, fontWeight: "600", color: "#334155" }}>{nomorPDAM}</Text>
               </View>
-
-              {/* Transaction info card */}
               <View
                 style={{
-                  backgroundColor: "#F8FAFC",
-                  borderRadius: 16,
-                  padding: 20,
-                  marginBottom: 30,
+                  flexDirection: "row",
+                  justifyContent: "space-between",
+                  marginBottom: 10,
+                  paddingBottom: 10,
+                  borderBottomWidth: cubicMeters !== null ? 1 : 0,
+                  borderBottomColor: "#E2E8F0",
                 }}>
-                <Text style={{ fontSize: 16, fontWeight: "600", color: "#64748B", marginBottom: 8 }}>Detail Transaksi</Text>
-                <View
-                  style={{
-                    flexDirection: "row",
-                    justifyContent: "space-between",
-                    marginBottom: 6,
-                  }}>
-                  <Text style={{ fontSize: 14, color: "#64748B" }}>No. Meter PDAM</Text>
-                  <Text style={{ fontSize: 14, fontWeight: "600", color: "#334155" }}>{nomorPDAM}</Text>
-                </View>
-                <View
-                  style={{
-                    flexDirection: "row",
-                    justifyContent: "space-between",
-                    marginBottom: 6,
-                  }}>
-                  <Text style={{ fontSize: 14, color: "#64748B" }}>Nominal</Text>
-                  <Text style={{ fontSize: 14, fontWeight: "600", color: "#334155" }}>{nominal}</Text>
-                </View>
-                {cubicMeters !== null && (
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      justifyContent: "space-between",
-                    }}>
-                    <Text style={{ fontSize: 14, color: "#64748B" }}>Volume Air</Text>
-                    <Text style={{ fontSize: 14, fontWeight: "600", color: "#334155" }}>{cubicMeters.toFixed(2)} m³</Text>
-                  </View>
-                )}
+                <Text style={{ fontSize: 14, color: "#64748B" }}>Nominal</Text>
+                <Text style={{ fontSize: 14, fontWeight: "600", color: "#334155" }}>{nominal}</Text>
               </View>
+              {cubicMeters !== null && (
+                <View
+                  style={{
+                    flexDirection: "row",
+                    justifyContent: "space-between",
+                  }}>
+                  <Text style={{ fontSize: 14, color: "#64748B" }}>Volume Air</Text>
+                  <Text style={{ fontSize: 14, fontWeight: "600", color: "#334155" }}>{cubicMeters.toFixed(2)} m³</Text>
+                </View>
+              )}
+            </View>
 
-              {/* PIN Instruction */}
-              <Text
-                style={{
-                  fontSize: 16,
-                  fontWeight: "600",
-                  color: "#1E293B",
-                  textAlign: "center",
-                  marginBottom: 8,
-                }}>
-                Masukkan PIN Transaksi
-              </Text>
-              <Text
-                style={{
-                  fontSize: 14,
-                  color: "#64748B",
-                  textAlign: "center",
-                  marginBottom: 30,
-                }}>
+            {/* PIN Input Field untuk keyboard perangkat */}
+            <View
+              style={{
+                borderWidth: 1,
+                borderColor: "#E2E8F0",
+                borderRadius: 16,
+                padding: 20,
+                marginVertical: 20,
+                backgroundColor: "white",
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 1 },
+                shadowOpacity: 0.05,
+                shadowRadius: 2,
+                elevation: 2,
+              }}>
+              <Text style={{ fontSize: 16, fontWeight: "600", color: "#1E293B", marginBottom: 8, textAlign: "center" }}>Masukkan PIN Transaksi</Text>
+              <Text style={{ fontSize: 14, color: "#64748B", marginBottom: 16, textAlign: "center" }}>
                 Masukkan 6 digit PIN untuk mengonfirmasi transaksi Anda
               </Text>
 
-              {/* PIN Input Boxes */}
-              <View
-                style={{
-                  flexDirection: "row",
-                  justifyContent: "center",
-                  marginBottom: 30,
-                }}>
+              {/* PIN indicator boxes */}
+              <View style={{ flexDirection: "row", justifyContent: "center", marginBottom: 20 }}>
                 {[0, 1, 2, 3, 4, 5].map((_, index) => renderPinDigit(index < pinTrans.length ? 1 : 0, index))}
               </View>
 
-              {/* PIN Input Field */}
+              {/* PIN input field */}
               <TextInput
                 value={pinTrans}
                 onChangeText={handlePinInput}
@@ -565,21 +836,158 @@ const BeliToken: React.FC<BeliTokenProps> = ({ children }) => {
                 secureTextEntry
                 autoFocus
                 style={{
-                  position: "absolute",
-                  opacity: 0,
-                  height: 0,
-                }}
-              />
-
-              {/* Confirmation Button */}
-              <TouchableOpacity
-                onPress={handlePurchaseToken}
-                disabled={isLoading || pinTrans.length < 6}
-                style={{
+                  borderWidth: 1,
+                  borderColor: "#E2E8F0",
                   borderRadius: 12,
+                  paddingHorizontal: 16,
+                  paddingVertical: 14,
+                  fontSize: 16,
+                  backgroundColor: "#F8FAFC",
+                  textAlign: "center",
+                }}
+                placeholder="Masukkan PIN 6 digit"
+              />
+            </View>
+
+            {/* Confirmation Button - Modern Style */}
+            <TouchableOpacity
+              onPress={handlePurchaseToken}
+              disabled={isLoading || pinTrans.length < 6}
+              style={{
+                borderRadius: 16,
+                overflow: "hidden",
+                opacity: isLoading || pinTrans.length < 6 ? 0.7 : 1,
+                marginTop: 10,
+                shadowColor: "#004EBA",
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.2,
+                shadowRadius: 4,
+                elevation: 3,
+              }}>
+              <LinearGradient
+                colors={["#2181FF", "#004EBA"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={{
+                  paddingVertical: 18,
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}>
+                {isLoading ? (
+                  <View style={{ flexDirection: "row", alignItems: "center" }}>
+                    <Image source={icons.loading} style={{ width: 20, height: 20, tintColor: "white", marginRight: 10 }} resizeMode="contain" />
+                    <Text style={{ color: "#fff", fontSize: 16, fontWeight: "600" }}>Memproses...</Text>
+                  </View>
+                ) : (
+                  <View style={{ flexDirection: "row", alignItems: "center" }}>
+                    <Image source={icons.check} style={{ width: 20, height: 20, tintColor: "white", marginRight: 10 }} resizeMode="contain" />
+                    <Text style={{ color: "#fff", fontSize: 16, fontWeight: "600" }}>Konfirmasi Pembelian</Text>
+                  </View>
+                )}
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+        </Animated.View>
+      )}
+
+      {/* Success Modal - Modern Design */}
+      {showSuccessModal && (
+        <Modal transparent visible={showSuccessModal} animationType="none">
+          <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", alignItems: "center" }}>
+            <Animated.View
+              style={{
+                backgroundColor: "white",
+                borderRadius: 24,
+                padding: 24,
+                width: "90%",
+                maxWidth: 400,
+                alignItems: "center",
+                transform: [{ scale: successAnimScale }],
+                opacity: successAnimOpacity,
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 10 },
+                shadowOpacity: 0.2,
+                shadowRadius: 20,
+                elevation: 10,
+              }}>
+              <View
+                style={{
+                  width: 80,
+                  height: 80,
+                  borderRadius: 40,
+                  backgroundColor: "#ECFDF5",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  marginBottom: 20,
+                }}>
+                <Image source={icons.success} style={{ width: 40, height: 40, tintColor: "#16A34A" }} resizeMode="contain" />
+              </View>
+
+              <Text style={{ fontSize: 24, fontWeight: "700", color: "#16A34A", marginBottom: 8, textAlign: "center" }}>Pembelian Berhasil!</Text>
+              <Text style={{ fontSize: 16, color: "#64748B", marginBottom: 24, textAlign: "center" }}>
+                Token Anda berhasil dibeli dan siap digunakan
+              </Text>
+
+              <View
+                style={{
+                  backgroundColor: "#F0FDF4",
+                  padding: 20,
+                  borderRadius: 16,
+                  width: "100%",
+                  marginBottom: 24,
+                  borderWidth: 1,
+                  borderColor: "#86EFAC",
+                }}>
+                <Text style={{ fontSize: 16, fontWeight: "600", color: "#16A34A", marginBottom: 12 }}>Token PDAM</Text>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    backgroundColor: "white",
+                    padding: 12,
+                    borderRadius: 12,
+                    borderWidth: 1,
+                    borderColor: "#D1FAE5",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                  }}>
+                  <Text style={{ fontSize: 20, fontWeight: "700", color: "#16A34A", letterSpacing: 1 }}>{tokenNumber}</Text>
+                  <TouchableOpacity
+                    onPress={handleCopyToken}
+                    style={{
+                      backgroundColor: "#D1FAE5",
+                      padding: 8,
+                      borderRadius: 8,
+                    }}>
+                    <Image source={icons.copy} style={{ width: 20, height: 20, tintColor: "#16A34A" }} resizeMode="contain" />
+                  </TouchableOpacity>
+                </View>
+
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    marginTop: 16,
+                    backgroundColor: "rgba(255,255,255,0.5)",
+                    padding: 12,
+                    borderRadius: 12,
+                  }}>
+                  <Image source={icons.teardrop} style={{ width: 20, height: 20, tintColor: "#16A34A", marginRight: 10 }} resizeMode="contain" />
+                  <Text style={{ fontSize: 14, color: "#16A34A", flex: 1 }}>Volume Air:</Text>
+                  <Text style={{ fontSize: 16, fontWeight: "700", color: "#16A34A" }}>{cubicMeters ? cubicMeters.toFixed(2) : "0.00"} m³</Text>
+                </View>
+              </View>
+
+              <TouchableOpacity
+                onPress={closeSuccessModal}
+                style={{
+                  borderRadius: 16,
                   overflow: "hidden",
-                  opacity: isLoading || pinTrans.length < 6 ? 0.7 : 1,
-                  marginTop: 20,
+                  width: "100%",
+                  shadowColor: "#004EBA",
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.2,
+                  shadowRadius: 4,
+                  elevation: 3,
                 }}>
                 <LinearGradient
                   colors={["#2181FF", "#004EBA"]}
@@ -588,15 +996,13 @@ const BeliToken: React.FC<BeliTokenProps> = ({ children }) => {
                   style={{
                     paddingVertical: 16,
                   }}>
-                  <Text style={{ color: "#fff", fontSize: 16, fontWeight: "600", textAlign: "center" }}>
-                    {isLoading ? "Memproses..." : "Konfirmasi Pembelian"}
-                  </Text>
+                  <Text style={{ color: "#fff", fontSize: 16, fontWeight: "600", textAlign: "center" }}>Lihat Detail Transaksi</Text>
                 </LinearGradient>
               </TouchableOpacity>
-            </View>
-          </Animated.View>
-        )}
-      </View>
+            </Animated.View>
+          </View>
+        </Modal>
+      )}
     </GestureHandlerRootView>
   );
 };
