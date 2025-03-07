@@ -921,7 +921,7 @@ const BeliToken: React.FC<BeliTokenProps> = ({ children }) => {
                   justifyContent: "center",
                   marginBottom: 20,
                 }}>
-                <Image source={icons.success} style={{ width: 40, height: 40, tintColor: "#16A34A" }} resizeMode="contain" />
+                <Image source={icons.checkmark} style={{ width: 40, height: 40, tintColor: "#16A34A" }} resizeMode="contain" />
               </View>
 
               <Text style={{ fontSize: 24, fontWeight: "700", color: "#16A34A", marginBottom: 8, textAlign: "center" }}>Pembelian Berhasil!</Text>
@@ -951,7 +951,7 @@ const BeliToken: React.FC<BeliTokenProps> = ({ children }) => {
                     alignItems: "center",
                     justifyContent: "space-between",
                   }}>
-                  <Text style={{ fontSize: 20, fontWeight: "700", color: "#16A34A", letterSpacing: 1 }}>{tokenNumber}</Text>
+                  <Text style={{ fontSize: 13, fontWeight: "700", color: "#16A34A", letterSpacing: 1 }}>{tokenNumber}</Text>
                   <TouchableOpacity
                     onPress={handleCopyToken}
                     style={{
@@ -959,7 +959,7 @@ const BeliToken: React.FC<BeliTokenProps> = ({ children }) => {
                       padding: 8,
                       borderRadius: 8,
                     }}>
-                    <Image source={icons.copy} style={{ width: 20, height: 20, tintColor: "#16A34A" }} resizeMode="contain" />
+                    <Image source={icons.copy} style={{ width: 14, height: 14, tintColor: "#16A34A" }} resizeMode="contain" />
                   </TouchableOpacity>
                 </View>
 

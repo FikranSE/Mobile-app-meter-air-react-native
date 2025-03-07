@@ -1,38 +1,83 @@
 import { useState } from "react";
-import { View, Text, TouchableOpacity, ScrollView, Alert } from "react-native";
+import { View, Text, TouchableOpacity, ScrollView } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, Link } from "expo-router";
 import InputField from "@/components/InputField";
+import CustomAlert from "@/components/CustomAlert";
 import { generateToken, registerAccount } from "@/lib/services/authService";
 
 export default function SignUp() {
-  const [form, setForm] = useState({ name: "", username: "", email: "", contact: "", password: "", confirmPassword: "" });
+  const [form, setForm] = useState({
+    name: "",
+    username: "",
+    email: "",
+    contact: "",
+    password: "",
+    confirmPassword: "",
+  });
+  const [loading, setLoading] = useState(false);
+  const [alert, setAlert] = useState({
+    visible: false,
+    type: "success",
+    message: "",
+  });
+
+  const showAlert = (type, message) => {
+    setAlert({
+      visible: true,
+      type,
+      message,
+    });
+  };
+
+  const hideAlert = () => {
+    setAlert((prev) => ({
+      ...prev,
+      visible: false,
+    }));
+  };
 
   function validateForm() {
     for (const [fieldName, fieldValue] of Object.entries(form)) {
       if (!fieldValue.trim()) {
-        Alert.alert("Error", fieldName + " tidak boleh kosong");
+        const fieldLabels = {
+          name: "Nama",
+          username: "Username",
+          email: "Email",
+          contact: "No. Telepon",
+          password: "Password",
+          confirmPassword: "Konfirmasi Password",
+        };
+
+        showAlert("error", `${fieldLabels[fieldName]} tidak boleh kosong`);
         return false;
       }
     }
+
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(form.email)) {
-      Alert.alert("Error", "Format email tidak valid");
+      showAlert("error", "Format email tidak valid");
       return false;
     }
+
     if (form.password !== form.confirmPassword) {
-      Alert.alert("Error", "Password tidak sama");
+      showAlert("error", "Password tidak sama");
       return false;
     }
+
     if (form.contact.length < 10 || form.contact.length > 13) {
-      Alert.alert("Error", "Nomor telepon tidak valid");
+      showAlert("error", "Nomor telepon tidak valid (10-13 digit)");
       return false;
     }
+
     return true;
   }
 
   async function handleSignUp() {
     if (!validateForm()) return;
+
+    setLoading(true);
+
     try {
       const accessToken = await generateToken();
       await registerAccount(accessToken, {
@@ -42,14 +87,29 @@ export default function SignUp() {
         contact: form.contact,
         password: form.password,
       });
-      router.push({ pathname: "/verification", params: { email: form.email } });
-    } catch {
-      Alert.alert("Error", "Terjadi kesalahan saat mendaftar. Silakan coba lagi.");
+
+      showAlert("success", "Pendaftaran berhasil! Silahkan verifikasi email Anda");
+
+      // Delay navigation to allow alert to be seen
+      setTimeout(() => {
+        router.push({
+          pathname: "/verification",
+          params: { email: form.email },
+        });
+      }, 1500);
+    } catch (error) {
+      console.error("Registration error:", error);
+      showAlert("error", "Pendaftaran gagal. Silakan coba lagi.");
+    } finally {
+      setLoading(false);
     }
   }
 
   return (
     <ScrollView className="flex-1 bg-white" showsVerticalScrollIndicator={false}>
+      {/* Custom Alert */}
+      <CustomAlert visible={alert.visible} type={alert.type} message={alert.message} onClose={hideAlert} />
+
       <View>
         <LinearGradient colors={["#2181FF", "#004EBA"]} start={{ x: 1, y: 0 }} end={{ x: 0, y: 0 }} className="h-[30%] rounded-b-lg">
           <View className="px-4 pt-16 pb-4">
@@ -131,9 +191,9 @@ export default function SignUp() {
                 showPasswordToggle
               />
             </View>
-            <TouchableOpacity onPress={handleSignUp} className="rounded-xl overflow-hidden">
+            <TouchableOpacity onPress={handleSignUp} disabled={loading} className="rounded-xl overflow-hidden">
               <LinearGradient colors={["#2181FF", "#004EBA"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} className="py-2">
-                <Text className="text-white text-lg font-semibold text-center">Daftar</Text>
+                <Text className="text-white text-lg font-semibold text-center">{loading ? "Memproses..." : "Daftar"}</Text>
               </LinearGradient>
             </TouchableOpacity>
             <View className="flex-row justify-center items-center mt-4 mb-2">

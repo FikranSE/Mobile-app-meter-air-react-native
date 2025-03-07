@@ -7,11 +7,14 @@ import { icons, images } from "@/constants";
 import * as Clipboard from "expo-clipboard";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { api } from "@/lib/api";
-import axios from "axios"; // Make sure axios is imported correctly
+import axios from "axios";
+import AccountSelector from "@/components/AccountSelector"; // Import the customer type selector
 
 const Home = () => {
   const [customerType, setCustomerType] = useState("prabayar");
   const [customerData, setCustomerData] = useState(null);
+  const [allCustomerData, setAllCustomerData] = useState([]); // To store all customer accounts
+  const [selectedAccountId, setSelectedAccountId] = useState(null); // To track the selected account ID
   const [totalSpending, setTotalSpending] = useState(0);
   const [totalCubic, setTotalCubic] = useState(0);
   const [transactions, setTransactions] = useState([]);
@@ -63,6 +66,44 @@ const Home = () => {
     fillShadowGradientOpacity: 0.3,
   };
 
+  // Handle customer type change
+  const handleCustomerTypeChange = async (type) => {
+    try {
+      setCustomerType(type);
+      await AsyncStorage.setItem("preferredCustomerType", type);
+
+      if (allCustomerData && allCustomerData.length > 0) {
+        // Find a customer of the selected type
+        const matchingCustomers = allCustomerData.filter(
+          (customer) =>
+            (type === "pascabayar" && customer.id_constumer.includes("PASCA")) || (type === "prabayar" && !customer.id_constumer.includes("PASCA"))
+        );
+
+        if (matchingCustomers.length > 0) {
+          const accountToUse = matchingCustomers[0];
+          setSelectedAccountId(accountToUse.id_constumer);
+          setCustomerData(accountToUse);
+
+          // Fetch transaction history for this customer
+          const username = await AsyncStorage.getItem("username");
+          const password = await AsyncStorage.getItem("password");
+          const dataToken = await AsyncStorage.getItem("userToken");
+          const consId = process.env.EXPO_PUBLIC_WH8_CONS_ID?.replace(/[",]/g, "") || "admin-wh8";
+          const accessToken = await AsyncStorage.getItem("access_token");
+
+          await fetchTransactionHistory(username, password, dataToken, consId, accessToken, accountToUse.meter_number, accountToUse.id_constumer);
+
+          showAnimatedAlert(`Beralih ke akun ${type === "pascabayar" ? "Pascabayar" : "Prabayar"}`);
+        } else {
+          showAnimatedAlert(`Tidak ada akun ${type === "pascabayar" ? "Pascabayar" : "Prabayar"} yang tersedia`);
+        }
+      }
+    } catch (error) {
+      console.error("Error switching customer type:", error);
+      showAnimatedAlert("Gagal mengubah tipe customer");
+    }
+  };
+
   // Fetch customer data and transaction history combined
   useEffect(() => {
     const fetchData = async () => {
@@ -73,6 +114,12 @@ const Home = () => {
         const dataToken = await AsyncStorage.getItem("userToken");
         const consId = process.env.EXPO_PUBLIC_WH8_CONS_ID?.replace(/[",]/g, "") || "admin-wh8";
         const accessToken = await AsyncStorage.getItem("access_token");
+        const savedAccountId = await AsyncStorage.getItem("selectedAccountId");
+        const preferredType = await AsyncStorage.getItem("preferredCustomerType");
+
+        if (preferredType) {
+          setCustomerType(preferredType);
+        }
 
         if (!username || !password || !dataToken || !accessToken) {
           console.log("Missing credentials:", { username, password, dataToken, accessToken });
@@ -101,116 +148,73 @@ const Home = () => {
 
         if (customerResponse.data.metadata.code === 200) {
           const customerDataArray = customerResponse.data.response.data;
+          setAllCustomerData(customerDataArray || []);
+
           if (customerDataArray && customerDataArray.length > 0) {
-            const customerResponseData = customerDataArray[0]; // Ambil data pelanggan pertama
-            setCustomerData(customerResponseData);
+            // Determine which account to use based on preferred type and saved account ID
+            let accountToUse = null;
+
+            if (preferredType && savedAccountId) {
+              // Try to find the saved account that matches preferred type
+              accountToUse = customerDataArray.find(
+                (account) =>
+                  account.id_constumer === savedAccountId &&
+                  ((preferredType === "pascabayar" && account.id_constumer.includes("PASCA")) ||
+                    (preferredType === "prabayar" && !account.id_constumer.includes("PASCA")))
+              );
+            }
+
+            // If no matching account found by ID and type, find by type only
+            if (!accountToUse && preferredType) {
+              accountToUse = customerDataArray.find(
+                (account) =>
+                  (preferredType === "pascabayar" && account.id_constumer.includes("PASCA")) ||
+                  (preferredType === "prabayar" && !account.id_constumer.includes("PASCA"))
+              );
+            }
+
+            // If we have a saved account ID but no type preference
+            if (!accountToUse && savedAccountId) {
+              accountToUse = customerDataArray.find((account) => account.id_constumer === savedAccountId);
+            }
+
+            // If still no account, use the first one
+            if (!accountToUse) {
+              accountToUse = customerDataArray[0];
+              // Set customer type based on the account
+              const isPostpaid = accountToUse.id_constumer.includes("PASCA");
+              setCustomerType(isPostpaid ? "pascabayar" : "prabayar");
+            }
+
+            setSelectedAccountId(accountToUse.id_constumer);
+            setCustomerData(accountToUse);
 
             // Check if id_constumer and meter_number exist
-            if (customerResponseData && customerResponseData.id_constumer && customerResponseData.meter_number) {
-              const isPostpaid = customerResponseData.id_constumer.includes("PASCA");
-              setCustomerType(isPostpaid ? "pascabayar" : "prabayar");
+            if (accountToUse && accountToUse.id_constumer && accountToUse.meter_number) {
+              // Fetch transaction history for the selected account
+              await fetchTransactionHistory(username, password, dataToken, consId, accessToken, accountToUse.meter_number, accountToUse.id_constumer);
             } else {
               console.error("Missing customer data:", {
-                id_constumer: customerResponseData?.id_constumer,
-                meter_number: customerResponseData?.meter_number,
+                id_constumer: accountToUse?.id_constumer,
+                meter_number: accountToUse?.meter_number,
               });
               setAlertMessage("Data pelanggan tidak lengkap.");
               setShowAlert(true);
-              return;
             }
           } else {
             console.error("No customer data found.");
             setAlertMessage("Data pelanggan tidak ditemukan.");
             setShowAlert(true);
-            return;
           }
         } else {
           console.log("Customer data fetch error:", customerResponse.data.metadata.message);
           setAlertMessage("Gagal mengambil data pelanggan.");
           setShowAlert(true);
         }
-
-        // Construct requestBody dynamically using the fetched customer data
-        const { meter_number, id_constumer } = customerResponse.data.response.data[0]; // Ambil data pelanggan pertama
-
-        if (!meter_number || !id_constumer) {
-          console.error("Missing customer data:", { meter_number, id_constumer });
-          setAlertMessage("Data pelanggan tidak lengkap.");
-          setShowAlert(true);
-          return;
-        }
-
-        const requestBody = {
-          username,
-          password,
-          data_token: dataToken,
-          cons_id: consId,
-          access_token: accessToken,
-          meter_number,
-          id_constumer,
-        };
-
-        // Fetch transaction history
-        const response = await api.post("https://pdampolman.airmurah.id/api/histotyTrans", requestBody, {
-          headers: {
-            "Content-Type": "application/json",
-          },
-        });
-
-        if (response.data.metadata.code === 200) {
-          const transactionData = response.data.response.data;
-          setTransactions(transactionData);
-
-          // Calculate total spending
-          const sum = transactionData.reduce((acc, curr) => acc + Number(curr.purchase), 0);
-          setTotalSpending(sum);
-
-          // Calculate total cubic water usage
-          const totalCubic = transactionData.reduce((acc, curr) => {
-            const cubicValue = Number(curr.cubic || 0);
-            return acc + cubicValue;
-          }, 0);
-          const formattedCubic = String(totalCubic).substring(0, 3);
-          setTotalCubic(formattedCubic);
-
-          // Prepare chart data from transactions
-          if (transactionData.length > 0) {
-            const sortedTransactions = [...transactionData].sort((a, b) => {
-              return new Date(a.date) - new Date(b.date);
-            });
-
-            const lastTransactions = sortedTransactions.slice(-7);
-
-            const labels = lastTransactions.map((trans, index) => {
-              try {
-                const date = new Date(trans.date);
-                if (!isNaN(date.getTime())) {
-                  return date.getDate().toString();
-                }
-                return (index + 1).toString();
-              } catch (e) {
-                return (index + 1).toString();
-              }
-            });
-
-            const data = lastTransactions.map((trans) => Number(trans.cubic || 0));
-
-            setChartData({
-              labels,
-              datasets: [
-                {
-                  data: data.length > 0 ? data : [0],
-                  color: (opacity = 1) => `rgba(33, 129, 255, ${opacity})`,
-                  strokeWidth: 2,
-                },
-              ],
-            });
-          }
-        } else {
-          console.log("API Error:", response.data.metadata.message);
-        }
       } catch (error) {
         console.error("Error fetching data:", error);
+        setAlertMessage("Terjadi kesalahan saat mengambil data.");
+        setShowAlert(true);
       } finally {
         setLoading(false);
       }
@@ -218,6 +222,162 @@ const Home = () => {
 
     fetchData();
   }, []);
+
+  // Fetch transaction history for a specific account
+  const fetchTransactionHistory = async (username, password, dataToken, consId, accessToken, meterNumber, idConstumer) => {
+    try {
+      if (!meterNumber || !idConstumer) {
+        console.error("Missing customer data for transaction history:", { meterNumber, idConstumer });
+        setAlertMessage("Data pelanggan tidak lengkap untuk mengambil riwayat transaksi.");
+        setShowAlert(true);
+        return;
+      }
+
+      const requestBody = {
+        username,
+        password,
+        data_token: dataToken,
+        cons_id: consId,
+        access_token: accessToken,
+        meter_number: meterNumber,
+        id_constumer: idConstumer,
+      };
+
+      // Fetch transaction history
+      const response = await api.post("https://pdampolman.airmurah.id/api/histotyTrans", requestBody, {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (response.data.metadata.code === 200) {
+        const transactionData = response.data.response.data || [];
+        setTransactions(transactionData);
+
+        // Calculate total spending
+        const sum = transactionData.reduce((acc, curr) => acc + Number(curr.purchase || 0), 0);
+        setTotalSpending(sum);
+
+        // Calculate total cubic water usage
+        const totalCubic = transactionData.reduce((acc, curr) => {
+          const cubicValue = Number(curr.cubic || 0);
+          return acc + cubicValue;
+        }, 0);
+        const formattedCubic = String(totalCubic).substring(0, 3);
+        setTotalCubic(formattedCubic);
+
+        // Prepare chart data from transactions
+        if (transactionData.length > 0) {
+          const sortedTransactions = [...transactionData].sort((a, b) => {
+            return new Date(a.date) - new Date(b.date);
+          });
+
+          const lastTransactions = sortedTransactions.slice(-7);
+
+          const labels = lastTransactions.map((trans, index) => {
+            try {
+              const date = new Date(trans.date);
+              if (!isNaN(date.getTime())) {
+                return date.getDate().toString();
+              }
+              return (index + 1).toString();
+            } catch (e) {
+              return (index + 1).toString();
+            }
+          });
+
+          const data = lastTransactions.map((trans) => Number(trans.cubic || 0));
+
+          setChartData({
+            labels,
+            datasets: [
+              {
+                data: data.length > 0 ? data : [0],
+                color: (opacity = 1) => `rgba(33, 129, 255, ${opacity})`,
+                strokeWidth: 2,
+              },
+            ],
+          });
+        } else {
+          // Set default chart data if no transactions
+          setChartData({
+            labels: ["1", "2", "3", "4", "5", "6", "7"],
+            datasets: [
+              {
+                data: [0, 0, 0, 0, 0, 0, 0],
+                color: (opacity = 1) => `rgba(33, 129, 255, ${opacity})`,
+                strokeWidth: 2,
+              },
+            ],
+          });
+        }
+      } else {
+        console.log("API Error:", response.data.metadata.message);
+        setAlertMessage(`Gagal mengambil riwayat transaksi: ${response.data.metadata.message}`);
+        setShowAlert(true);
+
+        // Set default values on error
+        setTransactions([]);
+        setTotalSpending(0);
+        setTotalCubic("0");
+        setChartData({
+          labels: ["1", "2", "3", "4", "5", "6", "7"],
+          datasets: [
+            {
+              data: [0, 0, 0, 0, 0, 0, 0],
+              color: (opacity = 1) => `rgba(33, 129, 255, ${opacity})`,
+              strokeWidth: 2,
+            },
+          ],
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching transaction history:", error);
+      setAlertMessage("Terjadi kesalahan saat mengambil riwayat transaksi.");
+      setShowAlert(true);
+
+      // Set default values on error
+      setTransactions([]);
+      setTotalSpending(0);
+      setTotalCubic("0");
+      setChartData({
+        labels: ["1", "2", "3", "4", "5", "6", "7"],
+        datasets: [
+          {
+            data: [0, 0, 0, 0, 0, 0, 0],
+            color: (opacity = 1) => `rgba(33, 129, 255, ${opacity})`,
+            strokeWidth: 2,
+          },
+        ],
+      });
+    }
+  };
+
+  // Handle account selection change
+  const handleSelectAccount = async (account) => {
+    try {
+      setSelectedAccountId(account.id_constumer);
+      setCustomerData(account);
+
+      const isPostpaid = account.id_constumer.includes("PASCA");
+      setCustomerType(isPostpaid ? "pascabayar" : "prabayar");
+
+      // Fetch new transaction history for the selected account
+      const username = await AsyncStorage.getItem("username");
+      const password = await AsyncStorage.getItem("password");
+      const dataToken = await AsyncStorage.getItem("userToken");
+      const consId = process.env.EXPO_PUBLIC_WH8_CONS_ID?.replace(/[",]/g, "") || "admin-wh8";
+      const accessToken = await AsyncStorage.getItem("access_token");
+
+      await fetchTransactionHistory(username, password, dataToken, consId, accessToken, account.meter_number, account.id_constumer);
+
+      showAnimatedAlert(`Beralih ke akun ${isPostpaid ? "Pascabayar" : "Prabayar"}`);
+    } catch (error) {
+      console.error("Error switching accounts:", error);
+      setAlertMessage("Gagal beralih akun.");
+      setShowAlert(true);
+    }
+  };
 
   const showAnimatedAlert = (message) => {
     setAlertMessage(message);
@@ -282,7 +442,7 @@ const Home = () => {
   };
 
   return (
-    <ScrollView className="flex-1 bg-white ">
+    <ScrollView className="flex-1 bg-white">
       {showAlert && (
         <Animated.View
           style={{
@@ -348,7 +508,8 @@ const Home = () => {
             </View>
           </TouchableOpacity>
         </View>
-        <Text className="text-white text-xl font-bold text-center">{customerType === "pascabayar" ? "Penggunaan Air" : "Air Tersisa"}</Text>
+
+        <Text className="text-white text-xl font-bold text-center mt-3">{customerType === "pascabayar" ? "Penggunaan Air" : "Air Tersisa"}</Text>
         <View className="items-center my-5">
           <ImageBackground
             source={images.kadar}
@@ -402,7 +563,7 @@ const Home = () => {
         </View>
 
         <View className="flex-row justify-between items-center mt-5">
-          <Text className="text-white opacity-70 font-bold mr-4">• {customerType === "pascabayar" ? "Pascabayar" : "Prabayar"}</Text>
+          <AccountSelector customerType={customerType} onTypeChange={handleCustomerTypeChange} icons={icons} />
           <TouchableOpacity onPress={handleNavigation} className="rounded-full">
             <LinearGradient
               colors={["#8CC0FFFF", "#0263FFFF"]}
@@ -423,7 +584,7 @@ const Home = () => {
       </LinearGradient>
 
       {/* Riwayat Penggunaan Air */}
-      <View className="mb-[250px]">
+      <View className="mb-[250px] -z-10">
         <View className="ml-7 mt-7">
           <Text className="text-black text-lg font-bold">Riwayat Penggunaan Air {">"}</Text>
           <Text className="text-black mt-1 mb-4">{getCurrentMonth()}</Text>
