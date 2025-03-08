@@ -55,10 +55,11 @@ const BeliToken: React.FC<BeliTokenProps> = ({ children }) => {
 
   const BASE_URL = "https://pdampolman.airmurah.id/api";
 
+  // Replace your existing fetchData function with this corrected version
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Ambil kredensial dan token dari AsyncStorage
+        // Retrieve credentials from AsyncStorage
         const username = await AsyncStorage.getItem("username");
         const password = await AsyncStorage.getItem("password");
         const dataToken = await AsyncStorage.getItem("userToken");
@@ -66,14 +67,12 @@ const BeliToken: React.FC<BeliTokenProps> = ({ children }) => {
         const accessToken = await AsyncStorage.getItem("access_token");
 
         if (!username || !password || !dataToken || !accessToken) {
-          console.log("Missing credentials:", { username, password, dataToken, accessToken });
-          // Jika kredensial belum lengkap, simpan username dan password secara sementara
-          await AsyncStorage.setItem("username", username || "");
-          await AsyncStorage.setItem("password", password || "");
+          console.log("Missing credentials, aborting API call");
           return;
         }
 
         // Fetch customer data
+        console.log("Fetching customer data from API...");
         const customerResponse = await axios.post(
           `${BASE_URL}/getDataConstumer`,
           {
@@ -89,16 +88,71 @@ const BeliToken: React.FC<BeliTokenProps> = ({ children }) => {
         );
 
         if (customerResponse.data.metadata.code === 200) {
-          setCustomerData(customerResponse.data.response.data);
-          // Set meter number directly in the input field
-          if (customerResponse.data.response.data.meter_number) {
-            setNomorPDAM(customerResponse.data.response.data.meter_number.toString());
+          const customersArray = customerResponse.data.response.data;
+          console.log("Customer data retrieved successfully");
+
+          // Check if the data is an array of customer objects
+          if (Array.isArray(customersArray) && customersArray.length > 0) {
+            console.log(`Found ${customersArray.length} customer records`);
+
+            // Assuming the first customer in the array is the logged-in user
+            const currentCustomer = customersArray[0];
+            setCustomerData(currentCustomer);
+
+            console.log("Current customer:", JSON.stringify(currentCustomer));
+
+            // Check if this customer has a valid id_constumer
+            if (currentCustomer && currentCustomer.id_constumer) {
+              const customerId = currentCustomer.id_constumer;
+              console.log("Current customer ID:", customerId);
+
+              // Determine customer type based on ID
+              const isPascabayar = customerId.includes("PASCA");
+              const customerType = isPascabayar ? "pascabayar" : "prabayar";
+              console.log(`Customer type: ${customerType}`);
+
+              // Handle meter number based on customer type
+              if (isPascabayar) {
+                // For postpaid, find the pascabayar customer record
+                const pascabayarRecord = customersArray.find((customer) => customer.id_constumer === customerId);
+
+                if (pascabayarRecord && pascabayarRecord.meter_number) {
+                  console.log(`Using meter_number for pascabayar customer: ${pascabayarRecord.meter_number}`);
+                  setNomorPDAM(pascabayarRecord.meter_number.toString());
+                  await AsyncStorage.setItem("meter_number", pascabayarRecord.meter_number.toString());
+                } else {
+                  // If no meter_number found, use customer ID
+                  console.log(`Using customer ID as meter number: ${customerId}`);
+                  setNomorPDAM(customerId);
+                  await AsyncStorage.setItem("meter_number", customerId);
+                }
+              } else {
+                // For prepaid customer, directly use meter_number from the record
+                if (currentCustomer.meter_number) {
+                  console.log(`Using meter_number for prabayar customer: ${currentCustomer.meter_number}`);
+                  setNomorPDAM(currentCustomer.meter_number.toString());
+                  await AsyncStorage.setItem("meter_number", currentCustomer.meter_number.toString());
+                } else {
+                  // Fallback to customer ID if meter_number not available
+                  console.log(`No meter_number found, using customer ID: ${customerId}`);
+                  setNomorPDAM(customerId);
+                  await AsyncStorage.setItem("meter_number", customerId);
+                }
+              }
+
+              // Save customer type
+              await AsyncStorage.setItem("customer_type", customerType);
+            } else {
+              console.log("Customer record doesn't have a valid id_constumer");
+            }
+          } else {
+            console.log("Response data is not an array or is empty");
           }
         } else {
-          console.log("Customer data fetch error:", customerResponse.data.metadata.message);
+          console.log("API call successful but returned error:", customerResponse.data.metadata.message);
         }
       } catch (error) {
-        console.error("Error fetching meter number:", error);
+        console.error("Error fetching customer data:", error);
       }
     };
 
@@ -425,7 +479,6 @@ const BeliToken: React.FC<BeliTokenProps> = ({ children }) => {
     }
   };
 
-  
   const handlePinInput = (value: string) => {
     // Memastikan hanya menerima angka dan membatasi panjang input menjadi 6 digit
     const cleanedValue = value.replace(/\D/g, "").slice(0, 6);
@@ -439,8 +492,8 @@ const BeliToken: React.FC<BeliTokenProps> = ({ children }) => {
       <View
         key={index}
         style={{
-          width: 50,
-          height: 60,
+          width: 40,
+          height: 50,
           borderRadius: 12,
           borderWidth: 2,
           borderColor: isFilled ? "#2181FF" : "#E2E8F0",
@@ -651,31 +704,102 @@ const BeliToken: React.FC<BeliTokenProps> = ({ children }) => {
             <Text style={{ fontSize: 14, color: "#64748B", marginBottom: 16 }}>Beli token langsung ke ID PDAM anda</Text>
 
             <View style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between" }}>
-              {/* Token Buttons */}
-
-              {[10000, 25000, 50000, 75000, 100000].map((amount) => (
-                <TouchableOpacity
-                className=""
-                  key={amount}
-                  onPress={() => handleTokenSelection(`Rp. ${amount.toLocaleString()}`)}
-                 >
+              {/* First row */}
+              <View style={{ width: "48%" }}>
+                <TouchableOpacity key="10000" onPress={() => handleTokenSelection("Rp. 10.000")}>
                   <LinearGradient
                     colors={["#2181FF", "#004EBA"]}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
                     style={{
-                      width: "100%",
                       borderRadius: 12,
-                      margin: 12,
-                      padding:8,
+                      padding: 12,
+                      marginBottom: 12,
                       alignItems: "center",
                       justifyContent: "center",
                     }}>
                     <Image source={icons.pay} style={{ width: 24, height: 24, tintColor: "white", marginBottom: 8 }} resizeMode="contain" />
-                    <Text style={{ fontSize: 16, fontWeight: "600", color: "white", textAlign: "center" }}>Rp. {amount.toLocaleString()},-</Text>
+                    <Text style={{ fontSize: 16, fontWeight: "600", color: "white", textAlign: "center" }}>Rp. 10.000,-</Text>
                   </LinearGradient>
                 </TouchableOpacity>
-              ))}
+              </View>
+              <View style={{ width: "48%" }}>
+                <TouchableOpacity key="25000" onPress={() => handleTokenSelection("Rp. 25.000")}>
+                  <LinearGradient
+                    colors={["#2181FF", "#004EBA"]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={{
+                      borderRadius: 12,
+                      padding: 12,
+                      marginBottom: 12,
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}>
+                    <Image source={icons.pay} style={{ width: 24, height: 24, tintColor: "white", marginBottom: 8 }} resizeMode="contain" />
+                    <Text style={{ fontSize: 16, fontWeight: "600", color: "white", textAlign: "center" }}>Rp. 25.000,-</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              </View>
+
+              {/* Second row */}
+              <View style={{ width: "48%" }}>
+                <TouchableOpacity key="50000" onPress={() => handleTokenSelection("Rp. 50.000")}>
+                  <LinearGradient
+                    colors={["#2181FF", "#004EBA"]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={{
+                      borderRadius: 12,
+                      padding: 12,
+                      marginBottom: 12,
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}>
+                    <Image source={icons.pay} style={{ width: 24, height: 24, tintColor: "white", marginBottom: 8 }} resizeMode="contain" />
+                    <Text style={{ fontSize: 16, fontWeight: "600", color: "white", textAlign: "center" }}>Rp. 50.000,-</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              </View>
+              <View style={{ width: "48%" }}>
+                <TouchableOpacity key="75000" onPress={() => handleTokenSelection("Rp. 75.000")}>
+                  <LinearGradient
+                    colors={["#2181FF", "#004EBA"]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={{
+                      borderRadius: 12,
+                      padding: 12,
+                      marginBottom: 12,
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}>
+                    <Image source={icons.pay} style={{ width: 24, height: 24, tintColor: "white", marginBottom: 8 }} resizeMode="contain" />
+                    <Text style={{ fontSize: 16, fontWeight: "600", color: "white", textAlign: "center" }}>Rp. 75.000,-</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              </View>
+
+              {/* Third row - centered */}
+              <View style={{ width: "100%", alignItems: "center" }}>
+                <View style={{ width: "48%" }}>
+                  <TouchableOpacity key="100000" onPress={() => handleTokenSelection("Rp. 100.000")}>
+                    <LinearGradient
+                      colors={["#2181FF", "#004EBA"]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={{
+                        borderRadius: 12,
+                        padding: 12,
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}>
+                      <Image source={icons.pay} style={{ width: 24, height: 24, tintColor: "white", marginBottom: 8 }} resizeMode="contain" />
+                      <Text style={{ fontSize: 16, fontWeight: "600", color: "white", textAlign: "center" }}>Rp. 100.000,-</Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                </View>
+              </View>
             </View>
           </View>
         </View>
@@ -824,7 +948,7 @@ const BeliToken: React.FC<BeliTokenProps> = ({ children }) => {
               </Text>
 
               {/* PIN indicator boxes */}
-              <View style={{ flexDirection: "row", justifyContent: "center", marginBottom: 20 }}>
+              <View className="" style={{ flexDirection: "row", justifyContent: "center", marginBottom: 20 }}>
                 {[0, 1, 2, 3, 4, 5].map((_, index) => renderPinDigit(index < pinTrans.length ? 1 : 0, index))}
               </View>
 
