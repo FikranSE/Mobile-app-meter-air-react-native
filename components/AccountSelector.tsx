@@ -1,9 +1,9 @@
 import React, { useState, useRef } from "react";
-import { View, Text, TouchableOpacity, Animated, StyleSheet } from "react-native";
+import { View, Text, TouchableOpacity, Animated, StyleSheet, ScrollView } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Image } from "react-native";
 
-const AccountSelector = ({ customerType, onTypeChange, icons }) => {
+const AccountSelector = ({ customerType, selectedAccount, accounts, onSelectAccount, icons }) => {
   const [isOpen, setIsOpen] = useState(false);
   const slideAnim = useRef(new Animated.Value(0)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
@@ -41,17 +41,46 @@ const AccountSelector = ({ customerType, onTypeChange, icons }) => {
     }
   };
 
-  const handleSelect = (type) => {
-    onTypeChange(type);
+  const handleSelect = (account) => {
+    onSelectAccount(account);
     toggleDropdown();
+  };
+
+  // Generate simplified account display name
+  const getSimplifiedAccountName = (account) => {
+    const isPascabayar = account.id_constumer.includes("PASCA");
+
+    // Extract account number/index from ID if possible
+    let accountNumber = "";
+    if (isPascabayar) {
+      const match = account.id_constumer.match(/PASCA-(\d+)/);
+      accountNumber = match ? match[1] : "";
+    } else {
+      // For prabayar, try to extract a number or just use a counter
+      const match = account.id_constumer.match(/(\d+)$/);
+      accountNumber = match ? match[1] : "";
+    }
+
+    return `${isPascabayar ? "Pascabayar" : "Prabayar"}${accountNumber ? " " + accountNumber : ""}`;
+  };
+
+  // Get the display text for the currently selected account
+  const getSelectedAccountDisplay = () => {
+    if (!selectedAccount) return "Pilih Akun";
+    return getSimplifiedAccountName(selectedAccount);
+  };
+
+  // Check if an account is the selected one
+  const isSelectedAccount = (account) => {
+    return selectedAccount && selectedAccount.id_constumer === account.id_constumer;
   };
 
   return (
     <View style={styles.container}>
       <TouchableOpacity onPress={toggleDropdown} activeOpacity={0.8}>
         <LinearGradient colors={["#3E93FF", "#0263FF"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.button}>
-          <Text style={styles.buttonText}>{customerType === "pascabayar" ? "Pascabayar" : "Prabayar"}</Text>
-          <Image source={icons.arrowDown} style={styles.checkIcon} tintColor="#FFFFFF" />
+          <Text style={styles.buttonText}>{getSelectedAccountDisplay()}</Text>
+          <Image source={icons.arrowDown} style={styles.arrowIcon} tintColor="#FFFFFF" />
         </LinearGradient>
       </TouchableOpacity>
 
@@ -71,37 +100,26 @@ const AccountSelector = ({ customerType, onTypeChange, icons }) => {
               ],
             },
           ]}>
-          <TouchableOpacity style={[styles.option, customerType === "prabayar" && styles.selectedOption]} onPress={() => handleSelect("prabayar")}>
-            <LinearGradient
-              colors={customerType === "prabayar" ? ["#8CC0FF", "#0263FF"] : ["#054BBC", "#054BBC"]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.optionGradient}>
-              <Text className="mr-1" style={[styles.optionText, customerType === "prabayar" && styles.selectedText]}>
-                Prabayar
-              </Text>
-              {customerType === "prabayar" && (
-                <Image source={icons.check || require("../assets/icons/check.png")} style={styles.checkIcon} tintColor="#FFFFFF" />
-              )}
-            </LinearGradient>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.option, customerType === "pascabayar" && styles.selectedOption]}
-            onPress={() => handleSelect("pascabayar")}>
-            <LinearGradient
-              colors={customerType === "pascabayar" ? ["#8CC0FF", "#0263FF"] : ["#054BBC", "#054BBC"]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.optionGradient}>
-              <Text className="mr-1" style={[styles.optionText, customerType === "pascabayar" && styles.selectedText]}>
-                Pascabayar
-              </Text>
-              {customerType === "pascabayar" && (
-                <Image source={icons.check || require("../assets/icons/check.png")} style={styles.checkIcon} tintColor="#FFFFFF" />
-              )}
-            </LinearGradient>
-          </TouchableOpacity>
+          <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollViewContent} showsVerticalScrollIndicator={false}>
+            {accounts &&
+              accounts.map((account, index) => (
+                <TouchableOpacity
+                  key={account.id_constumer}
+                  style={[styles.option, isSelectedAccount(account) && styles.selectedOption]}
+                  onPress={() => handleSelect(account)}>
+                  <LinearGradient
+                    colors={isSelectedAccount(account) ? ["#8CC0FF", "#0263FF"] : ["#054BBC", "#054BBC"]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.optionGradient}>
+                    <Text style={[styles.optionText, isSelectedAccount(account) && styles.selectedText]}>{getSimplifiedAccountName(account)}</Text>
+                    {isSelectedAccount(account) && (
+                      <Image source={icons.check || require("../assets/icons/check.png")} style={styles.checkIcon} tintColor="#FFFFFF" />
+                    )}
+                  </LinearGradient>
+                </TouchableOpacity>
+              ))}
+          </ScrollView>
         </Animated.View>
       )}
     </View>
@@ -127,8 +145,9 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontWeight: "bold",
     marginRight: 8,
+    fontSize: 13,
   },
-  icon: {
+  arrowIcon: {
     width: 12,
     height: 12,
   },
@@ -150,6 +169,12 @@ const styles = StyleSheet.create({
     shadowRadius: 5,
     elevation: 6,
   },
+  scrollView: {
+    maxHeight: 200,
+  },
+  scrollViewContent: {
+    paddingVertical: 2,
+  },
   option: {
     borderRadius: 8,
     marginVertical: 2,
@@ -168,6 +193,8 @@ const styles = StyleSheet.create({
   optionText: {
     color: "#FFFFFF",
     fontWeight: "500",
+    fontSize: 13,
+    flex: 1,
   },
   selectedText: {
     fontWeight: "bold",
@@ -175,6 +202,7 @@ const styles = StyleSheet.create({
   checkIcon: {
     width: 14,
     height: 14,
+    marginLeft: 8,
   },
 });
 

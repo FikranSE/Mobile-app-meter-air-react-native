@@ -8,19 +8,25 @@ import * as Clipboard from "expo-clipboard";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { api } from "@/lib/api";
 import axios from "axios";
-import AccountSelector from "@/components/AccountSelector"; // Import the customer type selector
+import AccountSelector from "@/components/AccountSelector";
 
 const Home = () => {
   const [customerType, setCustomerType] = useState("prabayar");
   const [customerData, setCustomerData] = useState(null);
-  const [allCustomerData, setAllCustomerData] = useState([]); // To store all customer accounts
-  const [selectedAccountId, setSelectedAccountId] = useState(null); // To track the selected account ID
+  const [allCustomerData, setAllCustomerData] = useState([]);
+  const [selectedAccountId, setSelectedAccountId] = useState(null);
   const [totalSpending, setTotalSpending] = useState(0);
   const [totalCubic, setTotalCubic] = useState(0);
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAlert, setShowAlert] = useState(false);
   const [alertMessage, setAlertMessage] = useState("");
+  // New state for pascabill data
+  const [pascaBillData, setPascaBillData] = useState([]);
+  const [currentBill, setCurrentBill] = useState({
+    kubik: 0,
+    total: 0,
+  });
   const [chartData, setChartData] = useState({
     labels: ["1", "2", "3", "4", "5", "6", "7"],
     datasets: [
@@ -66,9 +72,133 @@ const Home = () => {
     fillShadowGradientOpacity: 0.3,
   };
 
+  // New function to fetch pascabill data
+  const fetchPascaBillData = async (username, password, dataToken, consId, accessToken, meterNumber, idConstumer) => {
+    try {
+      // Get PIN from AsyncStorage - assuming it's stored there
+      const pinTrans = (await AsyncStorage.getItem("pinTrans")) || "1234"; // Default fallback PIN
+
+      console.log("Fetching pascabill data with:", {
+        username,
+        password,
+        dataToken: dataToken?.substring(0, 10) + "...",
+        consId,
+        accessToken: accessToken?.substring(0, 10) + "...",
+        pinTrans,
+        meterNumber,
+        idConstumer,
+      });
+
+      const requestBody = {
+        username,
+        password,
+        data_token: dataToken,
+        cons_id: consId,
+        access_token: accessToken,
+        pin_trans: pinTrans,
+        meter_number: meterNumber,
+        id_constumer: idConstumer,
+      };
+
+      const response = await api.post("/pascaBill", requestBody, {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (response.data.metadata.code === 200) {
+        const billData = response.data.response.data || [];
+        setPascaBillData(billData);
+
+        console.log("PascaBill data received:", billData);
+
+        // For kubik display: Always show the latest meter reading (kubik_setelahnya)
+        // regardless of bill status
+        const sortedBills = [...billData].sort((a, b) => {
+          return new Date(b.tgl_terbit_bill) - new Date(a.tgl_terbit_bill);
+        });
+
+        if (sortedBills.length > 0) {
+          const latestBill = sortedBills[0]; // Most recent bill regardless of status
+          console.log("Latest bill:", latestBill);
+
+          // Always display the latest meter reading (kubik_setelahnya)
+          if (customerType === "pascabayar") {
+            setTotalCubic(latestBill.kubik_setelahnya);
+          }
+        }
+
+        // For billing calculation: Only consider unpaid bills
+        const unpaidBills = billData.filter((bill) => bill.status === "unpaid");
+        console.log("Unpaid bills:", unpaidBills);
+
+        if (unpaidBills.length > 0) {
+          // Calculate total from all unpaid bills
+          const totalUnpaidAmount = unpaidBills.reduce((total, bill) => {
+            return total + Number(bill.total_bill);
+          }, 0);
+
+          console.log("Total unpaid amount:", totalUnpaidAmount);
+
+          setCurrentBill({
+            kubik: sortedBills[0]?.kubik_setelahnya || 0, // Always show latest meter reading
+            total: totalUnpaidAmount,
+          });
+
+          // Only set spending amount for unpaid bills
+          if (customerType === "pascabayar") {
+            setTotalSpending(totalUnpaidAmount);
+            console.log("Pascabayar total spending set to:", totalUnpaidAmount);
+          }
+        } else {
+          console.log("No unpaid bills found");
+          // Keep the latest meter reading but reset billing amount
+          setCurrentBill({
+            kubik: sortedBills[0]?.kubik_setelahnya || 0,
+            total: 0,
+          });
+
+          if (customerType === "pascabayar") {
+            setTotalSpending(0);
+            console.log("No unpaid bills, setting pascabayar total to 0");
+          }
+        }
+      } else {
+        console.log("PascaBill API Error:", response.data.metadata.message);
+        setAlertMessage(`Gagal mengambil data tagihan: ${response.data.metadata.message}`);
+        setShowAlert(true);
+
+        // Reset values on error for pascabayar
+        if (customerType === "pascabayar") {
+          setTotalSpending(0);
+          setCurrentBill({
+            kubik: 0,
+            total: 0,
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching pascabill data:", error);
+      setAlertMessage("Terjadi kesalahan saat mengambil data tagihan.");
+      setShowAlert(true);
+
+      // Reset values on error for pascabayar
+      if (customerType === "pascabayar") {
+        setTotalSpending(0);
+        setCurrentBill({
+          kubik: 0,
+          total: 0,
+        });
+      }
+    }
+  };
+
   // Handle customer type change
   const handleCustomerTypeChange = async (type) => {
     try {
+      // Store previous type to check if we're actually changing
+      const previousType = customerType;
+
       setCustomerType(type);
       await AsyncStorage.setItem("preferredCustomerType", type);
 
@@ -91,7 +221,15 @@ const Home = () => {
           const consId = process.env.EXPO_PUBLIC_WH8_CONS_ID?.replace(/[",]/g, "") || "admin-wh8";
           const accessToken = await AsyncStorage.getItem("access_token");
 
+          // Reset totalSpending when switching account types to avoid showing stale data
+          setTotalSpending(0);
+
           await fetchTransactionHistory(username, password, dataToken, consId, accessToken, accountToUse.meter_number, accountToUse.id_constumer);
+
+          // If pascabayar, fetch bill data
+          if (type === "pascabayar") {
+            await fetchPascaBillData(username, password, dataToken, consId, accessToken, accountToUse.meter_number, accountToUse.id_constumer);
+          }
 
           showAnimatedAlert(`Beralih ke akun ${type === "pascabayar" ? "Pascabayar" : "Prabayar"}`);
         } else {
@@ -193,6 +331,12 @@ const Home = () => {
             if (accountToUse && accountToUse.id_constumer && accountToUse.meter_number) {
               // Fetch transaction history for the selected account
               await fetchTransactionHistory(username, password, dataToken, consId, accessToken, accountToUse.meter_number, accountToUse.id_constumer);
+
+              // If pascabayar account, fetch bill data
+              const isPostpaid = accountToUse.id_constumer.includes("PASCA");
+              if (isPostpaid) {
+                await fetchPascaBillData(username, password, dataToken, consId, accessToken, accountToUse.meter_number, accountToUse.id_constumer);
+              }
             } else {
               console.error("Missing customer data:", {
                 id_constumer: accountToUse?.id_constumer,
@@ -244,7 +388,7 @@ const Home = () => {
       };
 
       // Fetch transaction history
-      const response = await api.post("https://pdampolman.airmurah.id/api/histotyTrans", requestBody, {
+      const response = await api.post("/histotyTrans", requestBody, {
         headers: {
           "Content-Type": "application/json",
         },
@@ -254,17 +398,32 @@ const Home = () => {
         const transactionData = response.data.response.data || [];
         setTransactions(transactionData);
 
-        // Calculate total spending
-        const sum = transactionData.reduce((acc, curr) => acc + Number(curr.purchase || 0), 0);
-        setTotalSpending(sum);
+        console.log("Transaction history received:", transactionData);
 
-        // Calculate total cubic water usage
-        const totalCubic = transactionData.reduce((acc, curr) => {
-          const cubicValue = Number(curr.cubic || 0);
-          return acc + cubicValue;
-        }, 0);
-        const formattedCubic = String(totalCubic).substring(0, 3);
-        setTotalCubic(formattedCubic);
+        // For prabayar accounts, calculate the total spending from transaction history
+        const isPrabayar = !idConstumer.includes("PASCA");
+        if (isPrabayar) {
+          // Calculate total spending from all transactions (purchase amounts)
+          const totalPurchase = transactionData.reduce((total, transaction) => {
+            const purchaseAmount = Number(transaction.purchase || 0);
+            return total + purchaseAmount;
+          }, 0);
+
+          console.log("Prabayar total spending calculated:", totalPurchase);
+          setTotalSpending(totalPurchase);
+
+          // Calculate total cubic water usage
+          const totalCubic = transactionData.reduce((total, transaction) => {
+            const cubicValue = Number(transaction.cubic || 0);
+            return total + cubicValue;
+          }, 0);
+
+          // Format to show only first 3 digits
+          const formattedCubic = String(totalCubic).substring(0, 3);
+          setTotalCubic(formattedCubic);
+          console.log("Prabayar total cubic calculated:", totalCubic);
+          console.log("Prabayar formatted cubic (first 3 digits):", formattedCubic);
+        }
 
         // Prepare chart data from transactions
         if (transactionData.length > 0) {
@@ -316,10 +475,13 @@ const Home = () => {
         setAlertMessage(`Gagal mengambil riwayat transaksi: ${response.data.metadata.message}`);
         setShowAlert(true);
 
-        // Set default values on error
+        // Set default values on error for prabayar accounts
+        if (!idConstumer.includes("PASCA")) {
+          setTotalSpending(0);
+          setTotalCubic("0");
+        }
+
         setTransactions([]);
-        setTotalSpending(0);
-        setTotalCubic("0");
         setChartData({
           labels: ["1", "2", "3", "4", "5", "6", "7"],
           datasets: [
@@ -336,10 +498,13 @@ const Home = () => {
       setAlertMessage("Terjadi kesalahan saat mengambil riwayat transaksi.");
       setShowAlert(true);
 
-      // Set default values on error
+      // Set default values on error for prabayar accounts
+      if (!idConstumer.includes("PASCA")) {
+        setTotalSpending(0);
+        setTotalCubic("0");
+      }
+
       setTransactions([]);
-      setTotalSpending(0);
-      setTotalCubic("0");
       setChartData({
         labels: ["1", "2", "3", "4", "5", "6", "7"],
         datasets: [
@@ -353,31 +518,44 @@ const Home = () => {
     }
   };
 
-  // Handle account selection change
-  const handleSelectAccount = async (account) => {
-    try {
-      setSelectedAccountId(account.id_constumer);
-      setCustomerData(account);
+ const handleSelectAccount = async (account) => {
+   try {
+     console.log("Selected account:", account.id_constumer);
 
-      const isPostpaid = account.id_constumer.includes("PASCA");
-      setCustomerType(isPostpaid ? "pascabayar" : "prabayar");
+     setSelectedAccountId(account.id_constumer);
+     setCustomerData(account);
 
-      // Fetch new transaction history for the selected account
-      const username = await AsyncStorage.getItem("username");
-      const password = await AsyncStorage.getItem("password");
-      const dataToken = await AsyncStorage.getItem("userToken");
-      const consId = process.env.EXPO_PUBLIC_WH8_CONS_ID?.replace(/[",]/g, "") || "admin-wh8";
-      const accessToken = await AsyncStorage.getItem("access_token");
+     const isPostpaid = account.id_constumer.includes("PASCA");
+     setCustomerType(isPostpaid ? "pascabayar" : "prabayar");
 
-      await fetchTransactionHistory(username, password, dataToken, consId, accessToken, account.meter_number, account.id_constumer);
+     // Store the selected account ID in AsyncStorage immediately
+     await AsyncStorage.setItem("selectedAccountId", account.id_constumer);
 
-      showAnimatedAlert(`Beralih ke akun ${isPostpaid ? "Pascabayar" : "Prabayar"}`);
-    } catch (error) {
-      console.error("Error switching accounts:", error);
-      setAlertMessage("Gagal beralih akun.");
-      setShowAlert(true);
-    }
-  };
+     // Reset totalSpending when switching accounts to avoid showing stale data
+     setTotalSpending(0);
+     setTotalCubic("0");
+
+     // Fetch new transaction history for the selected account
+     const username = await AsyncStorage.getItem("username");
+     const password = await AsyncStorage.getItem("password");
+     const dataToken = await AsyncStorage.getItem("userToken");
+     const consId = process.env.EXPO_PUBLIC_WH8_CONS_ID?.replace(/[",]/g, "") || "admin-wh8";
+     const accessToken = await AsyncStorage.getItem("access_token");
+
+     await fetchTransactionHistory(username, password, dataToken, consId, accessToken, account.meter_number, account.id_constumer);
+
+     // If pascabayar account, fetch bill data
+     if (isPostpaid) {
+       await fetchPascaBillData(username, password, dataToken, consId, accessToken, account.meter_number, account.id_constumer);
+     }
+
+     showAnimatedAlert(`Beralih ke akun ${isPostpaid ? "Pascabayar" : "Prabayar"}`);
+   } catch (error) {
+     console.error("Error switching accounts:", error);
+     setAlertMessage("Gagal beralih akun.");
+     setShowAlert(true);
+   }
+ };
 
   const showAnimatedAlert = (message) => {
     setAlertMessage(message);
@@ -419,9 +597,24 @@ const Home = () => {
     }
   };
 
-  const handleNavigation = () => {
+  const handleNavigation = async () => {
     if (customerType === "pascabayar") {
-      router.push("/(root)/detail-tagihan");
+      // Save the currently selected account ID before navigating
+      if (customerData && customerData.id_constumer) {
+        console.log("Navigating to detail-tagihan with account ID:", customerData.id_constumer);
+
+        // Save selected account data to AsyncStorage
+        await AsyncStorage.setItem("selectedAccountId", customerData.id_constumer);
+
+        // Also save the full customer data for immediate access
+        await AsyncStorage.setItem("currentCustomerData", JSON.stringify(customerData));
+
+        // Navigate to the bill details page
+        router.push("/(root)/detail-tagihan");
+      } else {
+        console.error("No customer data available");
+        showAnimatedAlert("Data pelanggan tidak tersedia");
+      }
     } else {
       router.push("/(root)/beli-token");
     }
@@ -509,7 +702,7 @@ const Home = () => {
           </TouchableOpacity>
         </View>
 
-        <Text className="text-white text-xl font-bold text-center mt-3">{customerType === "pascabayar" ? "Penggunaan Air" : "Air Tersisa"}</Text>
+        <Text className="text-white text-xl font-bold text-center mt-3">{customerType === "pascabayar" ? "Meteran Air" : "Air Tersisa"}</Text>
         <View className="items-center my-5">
           <ImageBackground
             source={images.kadar}
@@ -551,19 +744,29 @@ const Home = () => {
         <View className="mt-5">
           <View className="flex-row justify-between">
             <Text className="text-white">ID PDAM</Text>
-            <Text className="text-white">{customerType === "pascabayar" ? "Tagihan Bulan Ini" : "Total Pengeluaran"}</Text>
+            <Text className="text-white">
+              {customerType === "pascabayar" ? (currentBill.total > 0 ? "Tagihan Bulan Ini" : "Tidak Ada Tagihan") : "Total Pengeluaran"}
+            </Text>
           </View>
           <View className="flex-row justify-between mt-3 items-center">
             <TouchableOpacity className="flex-row items-center" onPress={handleCopyPDAMID} activeOpacity={0.7}>
               <Text className="text-white text-lg font-medium">{customerData?.meter_number || "Tidak tersedia"}</Text>
               <Image source={icons.copy} className="w-4 h-4 ml-2" tintColor="white" />
             </TouchableOpacity>
-            <Text className="text-white text-lg font-bold">{formatRupiah(totalSpending)}</Text>
+            <Text className="text-white text-lg font-bold">
+              {customerType === "pascabayar" ? (currentBill.total > 0 ? formatRupiah(currentBill.total) : "Rp0") : formatRupiah(totalSpending)}
+            </Text>
           </View>
         </View>
 
         <View className="flex-row justify-between items-center mt-5">
-          <AccountSelector customerType={customerType} onTypeChange={handleCustomerTypeChange} icons={icons} />
+          <AccountSelector
+            customerType={customerType}
+            selectedAccount={customerData}
+            accounts={allCustomerData}
+            onSelectAccount={handleSelectAccount}
+            icons={icons}
+          />
           <TouchableOpacity onPress={handleNavigation} className="rounded-full">
             <LinearGradient
               colors={["#8CC0FFFF", "#0263FFFF"]}
