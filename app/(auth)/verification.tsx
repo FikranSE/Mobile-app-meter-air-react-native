@@ -1,111 +1,39 @@
-import { useState, useRef, useEffect } from "react";
-import { View, Text, TouchableOpacity, TextInput, Keyboard, Alert, ActivityIndicator } from "react-native";
+import { useState } from "react";
+import { View, Text, TouchableOpacity, Alert, ActivityIndicator } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useLocalSearchParams } from "expo-router";
-import axios from "axios";
 import { useAuth } from "@/lib/context/authContext";
 
 const VerificationScreen = () => {
-  const [code, setCode] = useState(["", "", "", "", "", ""]);
-  const [timer, setTimer] = useState(60);
   const [loading, setLoading] = useState(false);
-  const inputs = useRef([]);
   const { token } = useAuth();
   const params = useLocalSearchParams();
   const email = params.email || "";
 
-  useEffect(() => {
-    if (timer > 0) {
-      const countdown = setInterval(() => setTimer((prev) => prev - 1), 1000);
-      return () => clearInterval(countdown);
-    }
-  }, [timer]);
-
-  const handleCodeChange = (text, index) => {
-    const newCode = [...code];
-    newCode[index] = text;
-    setCode(newCode);
-
-    // Move to next input if value entered
-    if (text && index < 5) {
-      inputs.current[index + 1].focus();
-    }
-  };
-
-  const handleKeyPress = (e, index) => {
-    // Move to previous input if backspace pressed
-    if (e.nativeEvent.key === "Backspace" && !code[index] && index > 0) {
-      inputs.current[index - 1].focus();
-    }
-  };
-
-  const handleResendCode = async () => {
+  const handleResendVerification = async () => {
     try {
       setLoading(true);
-      // You would normally call your resend code API here
-      // For now, we'll just reset the timer
-      setTimer(60);
-      Alert.alert("Kode terkirim", "Kode verifikasi baru telah dikirim ke email Anda.");
+      // You would normally call your resend verification API here
+      Alert.alert("Email terkirim", "Link verifikasi baru telah dikirim ke email Anda.");
     } catch (error) {
-      console.error("Error resending code:", error);
-      Alert.alert("Gagal", "Gagal mengirim ulang kode verifikasi. Silakan coba lagi.");
+      console.error("Error resending verification:", error);
+      Alert.alert("Gagal", "Gagal mengirim ulang link verifikasi. Silakan coba lagi.");
     } finally {
       setLoading(false);
     }
   };
 
- const handleVerify = async () => {
-   try {
-     setLoading(true);
-     const verificationCode = code.join("");
-
-     if (verificationCode.length !== 6) {
-       Alert.alert("Kode tidak lengkap", "Silakan masukkan 6 digit kode verifikasi.");
-       setLoading(false);
-       return;
-     }
-
-     const verificationUrl = `https://pdampolman.airmurah.id/api/verifAccount/${verificationCode}`;
-     console.log("Verification URL:", verificationUrl); // Log the URL here
-
-     const response = await axios.get(verificationUrl, {
-       headers: {
-         "Content-Type": "application/json",
-         "wh8-cons-id": process.env.EXPO_PUBLIC_WH8_CONS_ID?.replace(/[",]/g, "") || "admin-wh8",
-         "wh8-access-token": token,
-       },
-     });
-
-     console.log("Verification response:", response.data);
-
-     if (response.data.metadata.code === 200) {
-       Alert.alert("Berhasil", "Akun Anda telah diverifikasi.", [{ text: "OK", onPress: () => router.replace("/(root)/(tabs)/home") }]);
-     } else {
-       Alert.alert("Gagal", response.data.metadata.message || "Kode verifikasi salah. Silakan coba lagi.");
-     }
-   } catch (error) {
-     console.error("Verification error:", error);
-
-     // Handle specific error cases
-     if (error.response) {
-       const message = error.response.data?.metadata?.message || "Terjadi kesalahan saat verifikasi.";
-       Alert.alert("Gagal", message);
-     } else {
-       Alert.alert("Gagal", "Gagal melakukan verifikasi. Periksa koneksi Anda dan coba lagi.");
-     }
-   } finally {
-     setLoading(false);
-   }
- };
-
+  const handleBackToLogin = () => {
+    router.replace("/(auth)/sign-in");
+  };
 
   return (
     <View className="flex-1 bg-white">
       <LinearGradient colors={["#2181FF", "#004EBA"]} start={{ x: 1, y: 0 }} end={{ x: 0, y: 0 }} className="h-[30%] rounded-b-lg">
         <View className="px-4 pt-16 pb-4">
-          <Text className="text-white text-3xl font-bold text-center">Verifikasi Kode</Text>
+          <Text className="text-white text-3xl font-bold text-center">Verifikasi Email</Text>
           <Text className="text-white text-base font-light text-center mt-3 px-8 leading-5">
-            Masukkan kode verifikasi yang telah{"\n"}dikirim ke {email || "email Anda"}
+            Silahkan cek email yang Anda daftarkan{"\n"}untuk melakukan verifikasi
           </Text>
         </View>
       </LinearGradient>
@@ -120,46 +48,29 @@ const VerificationScreen = () => {
             shadowRadius: 5,
             elevation: 10,
           }}>
-          {/* Code Input Section */}
-          <View className="flex-row justify-between mb-8 mt-4">
-            {[0, 1, 2, 3, 4, 5].map((index) => (
-              <TextInput
-                key={index}
-                ref={(input) => (inputs.current[index] = input)}
-                className="w-12 h-12 border-2 border-gray-300 rounded-lg text-center text-xl font-bold"
-                maxLength={1}
-                keyboardType="number-pad"
-                value={code[index]}
-                onChangeText={(text) => handleCodeChange(text, index)}
-                onKeyPress={(e) => handleKeyPress(e, index)}
-              />
-            ))}
+          {/* Verification Message */}
+          <View className="items-center py-8">
+            <Text className="text-center text-gray-700 text-lg mb-3">Silahkan tunggu beberapa saat Link verifikasi akan dikirim ke:</Text>
+            <Text className="text-center text-blue-600 font-bold text-lg mb-8">{email || "email Anda"}</Text>
+            <Text className="text-center text-gray-600 mb-10 px-4">
+              Silahkan cek email Anda dan klik link verifikasi untuk mengaktifkan akun Anda.
+            </Text>
           </View>
 
-          {/* Timer and Resend Section */}
-          <View className="flex-row justify-center items-center mb-8">
-            {timer > 0 ? (
-              <Text className="text-gray-500">Kirim ulang kode dalam {timer} detik</Text>
-            ) : (
-              <TouchableOpacity onPress={handleResendCode} disabled={loading}>
-                <Text className="text-blue-500 font-semibold">Kirim Ulang Kode</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-
-          {/* Verify Button */}
-          <TouchableOpacity onPress={handleVerify} className="rounded-xl overflow-hidden" disabled={loading || code.some((digit) => digit === "")}>
-            <LinearGradient
-              colors={code.some((digit) => digit === "") ? ["#A0A0A0", "#808080"] : ["#2181FF", "#004EBA"]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              className="py-3">
+          {/* Resend Button */}
+          <TouchableOpacity onPress={handleResendVerification} className="rounded-xl overflow-hidden mb-4" disabled={loading}>
+            <LinearGradient colors={["#2181FF", "#004EBA"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} className="py-3">
               {loading ? (
                 <ActivityIndicator color="white" size="small" />
               ) : (
-                <Text className="text-white text-lg font-semibold text-center">Verifikasi</Text>
+                <Text className="text-white text-lg font-semibold text-center">Kirim Ulang Link Verifikasi</Text>
               )}
             </LinearGradient>
+          </TouchableOpacity>
+
+          {/* Back to Login Button */}
+          <TouchableOpacity onPress={handleBackToLogin} className="mt-3">
+            <Text className="text-blue-500 font-semibold text-center">Kembali ke Halaman Login</Text>
           </TouchableOpacity>
         </View>
       </View>

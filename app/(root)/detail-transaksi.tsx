@@ -171,13 +171,22 @@ const DetailTransaksi = () => {
     if (!data.rincian) return data;
 
     try {
+      // Only add tagihan and biayaAdmin
       const tagihan = extractNumericValue(data.rincian.tagihan || "0");
-      const cubic = extractNumericValue(data.rincian.cubic || "0");
-      const denda = extractNumericValue(data.rincian.denda || "0");
       const biayaAdmin = extractNumericValue(data.rincian.biayaAdmin || "0");
 
-      const totalValue = tagihan + cubic + denda + biayaAdmin;
+      // Sum only tagihan and biayaAdmin
+      const totalValue = tagihan + biayaAdmin;
+
+      // Format the total with Indonesian rupiah format
       const formattedTotal = `Rp. ${totalValue.toLocaleString("id-ID")},-`;
+
+      console.log("Calculation details:", {
+        tagihan,
+        biayaAdmin,
+        total: totalValue,
+        formattedTotal,
+      });
 
       return {
         ...data,

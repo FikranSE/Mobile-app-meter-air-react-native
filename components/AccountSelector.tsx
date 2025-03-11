@@ -46,28 +46,34 @@ const AccountSelector = ({ customerType, selectedAccount, accounts, onSelectAcco
     toggleDropdown();
   };
 
-  // Generate simplified account display name
-  const getSimplifiedAccountName = (account) => {
+  // Generate account display name with format: type + first 4 letters of username
+  const getDisplayAccountName = (account) => {
     const isPascabayar = account.id_constumer.includes("PASCA");
+    const accountType = isPascabayar ? "Pascabayar" : "Prabayar";
 
-    // Extract account number/index from ID if possible
-    let accountNumber = "";
-    if (isPascabayar) {
-      const match = account.id_constumer.match(/PASCA-(\d+)/);
-      accountNumber = match ? match[1] : "";
-    } else {
-      // For prabayar, try to extract a number or just use a counter
-      const match = account.id_constumer.match(/(\d+)$/);
-      accountNumber = match ? match[1] : "";
+    // Extract username (assuming it's in the username field)
+    // If username doesn't exist, try to extract from other fields or use a default
+    let username = account.username || "";
+
+    // If there's no username field, try to extract from id_constumer or name fields
+    if (!username && account.name) {
+      username = account.name;
+    } else if (!username) {
+      // Default case: just use the first part of id_constumer
+      const parts = account.id_constumer.split("-");
+      username = parts.length > 1 ? parts[1] : "user";
     }
 
-    return `${isPascabayar ? "Pascabayar" : "Prabayar"}${accountNumber ? " " + accountNumber : ""}`;
+    // Get first 4 letters of username
+    const shortUsername = username.substring(0, 4).toLowerCase();
+
+    return `${accountType} ${shortUsername}`;
   };
 
   // Get the display text for the currently selected account
   const getSelectedAccountDisplay = () => {
     if (!selectedAccount) return "Pilih Akun";
-    return getSimplifiedAccountName(selectedAccount);
+    return getDisplayAccountName(selectedAccount);
   };
 
   // Check if an account is the selected one
@@ -102,7 +108,7 @@ const AccountSelector = ({ customerType, selectedAccount, accounts, onSelectAcco
           ]}>
           <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollViewContent} showsVerticalScrollIndicator={false}>
             {accounts &&
-              accounts.map((account, index) => (
+              accounts.map((account) => (
                 <TouchableOpacity
                   key={account.id_constumer}
                   style={[styles.option, isSelectedAccount(account) && styles.selectedOption]}
@@ -112,7 +118,7 @@ const AccountSelector = ({ customerType, selectedAccount, accounts, onSelectAcco
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
                     style={styles.optionGradient}>
-                    <Text style={[styles.optionText, isSelectedAccount(account) && styles.selectedText]}>{getSimplifiedAccountName(account)}</Text>
+                    <Text style={[styles.optionText, isSelectedAccount(account) && styles.selectedText]}>{getDisplayAccountName(account)}</Text>
                     {isSelectedAccount(account) && (
                       <Image source={icons.check || require("../assets/icons/check.png")} style={styles.checkIcon} tintColor="#FFFFFF" />
                     )}

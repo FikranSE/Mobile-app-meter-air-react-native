@@ -19,7 +19,8 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "package": "com.fikranshad1q.meter"
     },
     "web": {
       "bundler": "metro",
@@ -36,6 +37,14 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {
+        "origin": "https://meter.dev/"
+      },
+      "eas": {
+        "projectId": "e0f57ee8-40e5-4b5c-8815-37fc0786e768"
+      }
     }
   }
 }

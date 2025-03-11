@@ -9,6 +9,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { api } from "@/lib/api";
 import axios from "axios";
 import AccountSelector from "@/components/AccountSelector";
+import PinTransactionModal from "@/components/PinTransactionModal";
+
 
 const Home = () => {
   const [customerType, setCustomerType] = useState("prabayar");
@@ -21,6 +23,10 @@ const Home = () => {
   const [loading, setLoading] = useState(true);
   const [showAlert, setShowAlert] = useState(false);
   const [alertMessage, setAlertMessage] = useState("");
+  const [pinModalVisible, setPinModalVisible] = useState(false);
+  const [pinErrorMessage, setPinErrorMessage] = useState(null);
+  const [pendingPascaBillRequest, setPendingPascaBillRequest] = useState(null);
+
   // New state for pascabill data
   const [pascaBillData, setPascaBillData] = useState([]);
   const [currentBill, setCurrentBill] = useState({
@@ -72,11 +78,11 @@ const Home = () => {
     fillShadowGradientOpacity: 0.3,
   };
 
-  // New function to fetch pascabill data
-  const fetchPascaBillData = async (username, password, dataToken, consId, accessToken, meterNumber, idConstumer) => {
+  // Perbarui fungsi fetchPascaBillData untuk memproses data pascabill dengan benar
+  const fetchPascaBillData = async (username, password, dataToken, consId, accessToken, meterNumber, idConstumer, customPin = null) => {
     try {
-      // Get PIN from AsyncStorage - assuming it's stored there
-      const pinTrans = (await AsyncStorage.getItem("pinTrans")) || "1234"; // Default fallback PIN
+      // Get PIN from AsyncStorage or use custom PIN if provided
+      const pinTrans = customPin || (await AsyncStorage.getItem("pinTrans")) || "123456"; // Default fallback PIN dengan 6 digit
 
       console.log("Fetching pascabill data with:", {
         username,
@@ -118,15 +124,23 @@ const Home = () => {
           return new Date(b.tgl_terbit_bill) - new Date(a.tgl_terbit_bill);
         });
 
-        if (sortedBills.length > 0) {
-          const latestBill = sortedBills[0]; // Most recent bill regardless of status
-          console.log("Latest bill:", latestBill);
+       if (sortedBills.length > 0) {
+         const latestBill = sortedBills[0]; // Most recent bill regardless of status
+         console.log("Latest bill:", latestBill);
 
-          // Always display the latest meter reading (kubik_setelahnya)
-          if (customerType === "pascabayar") {
-            setTotalCubic(latestBill.kubik_setelahnya);
-          }
-        }
+         // Always display the latest meter reading (kubik_setelahnya)
+         if (customerType === "pascabayar") {
+           // Pastikan kita menetapkan nilai kubik yang benar
+           const kubikSetelahnya = latestBill.kubik_setelahnya || "0";
+           console.log("Setting kubik_setelahnya to meteran air:", kubikSetelahnya);
+
+           // Set totalCubic untuk tampilan meteran air
+           setTotalCubic(kubikSetelahnya);
+
+           // Log untuk debugging
+           console.log("Total Cubic set to:", kubikSetelahnya);
+         }
+       }
 
         // For billing calculation: Only consider unpaid bills
         const unpaidBills = billData.filter((bill) => bill.status === "unpaid");
@@ -165,6 +179,26 @@ const Home = () => {
         }
       } else {
         console.log("PascaBill API Error:", response.data.metadata.message);
+
+        // Check if error is related to PIN
+        if (response.data.metadata.message.toLowerCase().includes("pin") || response.data.metadata.message.toLowerCase().includes("tidak valid")) {
+          // Store the request params for later use when PIN is provided
+          setPendingPascaBillRequest({
+            username,
+            password,
+            dataToken,
+            consId,
+            accessToken,
+            meterNumber,
+            idConstumer,
+          });
+
+          // Show PIN modal with error message
+          setPinErrorMessage(response.data.metadata.message);
+          setPinModalVisible(true);
+          return; // Exit early
+        }
+
         setAlertMessage(`Gagal mengambil data tagihan: ${response.data.metadata.message}`);
         setShowAlert(true);
 
@@ -190,6 +224,21 @@ const Home = () => {
           total: 0,
         });
       }
+    }
+  };
+
+  const handlePinSubmit = async (pin) => {
+    setPinModalVisible(false);
+
+    if (pendingPascaBillRequest) {
+      // Retry the request with the new PIN
+      const { username, password, dataToken, consId, accessToken, meterNumber, idConstumer } = pendingPascaBillRequest;
+
+      // Clear the pending request
+      setPendingPascaBillRequest(null);
+
+      // Call fetchPascaBillData with the new PIN
+      await fetchPascaBillData(username, password, dataToken, consId, accessToken, meterNumber, idConstumer, pin);
     }
   };
 
@@ -518,44 +567,44 @@ const Home = () => {
     }
   };
 
- const handleSelectAccount = async (account) => {
-   try {
-     console.log("Selected account:", account.id_constumer);
+  const handleSelectAccount = async (account) => {
+    try {
+      console.log("Selected account:", account.id_constumer);
 
-     setSelectedAccountId(account.id_constumer);
-     setCustomerData(account);
+      setSelectedAccountId(account.id_constumer);
+      setCustomerData(account);
 
-     const isPostpaid = account.id_constumer.includes("PASCA");
-     setCustomerType(isPostpaid ? "pascabayar" : "prabayar");
+      const isPostpaid = account.id_constumer.includes("PASCA");
+      setCustomerType(isPostpaid ? "pascabayar" : "prabayar");
 
-     // Store the selected account ID in AsyncStorage immediately
-     await AsyncStorage.setItem("selectedAccountId", account.id_constumer);
+      // Store the selected account ID in AsyncStorage immediately
+      await AsyncStorage.setItem("selectedAccountId", account.id_constumer);
 
-     // Reset totalSpending when switching accounts to avoid showing stale data
-     setTotalSpending(0);
-     setTotalCubic("0");
+      // Reset totalSpending when switching accounts to avoid showing stale data
+      setTotalSpending(0);
+      setTotalCubic("0");
 
-     // Fetch new transaction history for the selected account
-     const username = await AsyncStorage.getItem("username");
-     const password = await AsyncStorage.getItem("password");
-     const dataToken = await AsyncStorage.getItem("userToken");
-     const consId = process.env.EXPO_PUBLIC_WH8_CONS_ID?.replace(/[",]/g, "") || "admin-wh8";
-     const accessToken = await AsyncStorage.getItem("access_token");
+      // Fetch new transaction history for the selected account
+      const username = await AsyncStorage.getItem("username");
+      const password = await AsyncStorage.getItem("password");
+      const dataToken = await AsyncStorage.getItem("userToken");
+      const consId = process.env.EXPO_PUBLIC_WH8_CONS_ID?.replace(/[",]/g, "") || "admin-wh8";
+      const accessToken = await AsyncStorage.getItem("access_token");
 
-     await fetchTransactionHistory(username, password, dataToken, consId, accessToken, account.meter_number, account.id_constumer);
+      await fetchTransactionHistory(username, password, dataToken, consId, accessToken, account.meter_number, account.id_constumer);
 
-     // If pascabayar account, fetch bill data
-     if (isPostpaid) {
-       await fetchPascaBillData(username, password, dataToken, consId, accessToken, account.meter_number, account.id_constumer);
-     }
+      // If pascabayar account, fetch bill data
+      if (isPostpaid) {
+        await fetchPascaBillData(username, password, dataToken, consId, accessToken, account.meter_number, account.id_constumer);
+      }
 
-     showAnimatedAlert(`Beralih ke akun ${isPostpaid ? "Pascabayar" : "Prabayar"}`);
-   } catch (error) {
-     console.error("Error switching accounts:", error);
-     setAlertMessage("Gagal beralih akun.");
-     setShowAlert(true);
-   }
- };
+      showAnimatedAlert(`Beralih ke akun ${isPostpaid ? "Pascabayar" : "Prabayar"}`);
+    } catch (error) {
+      console.error("Error switching accounts:", error);
+      setAlertMessage("Gagal beralih akun.");
+      setShowAlert(true);
+    }
+  };
 
   const showAnimatedAlert = (message) => {
     setAlertMessage(message);
@@ -671,7 +720,15 @@ const Home = () => {
           </View>
         </Animated.View>
       )}
-
+      <PinTransactionModal
+        visible={pinModalVisible}
+        onClose={() => {
+          setPinModalVisible(false);
+          setPendingPascaBillRequest(null);
+        }}
+        onSubmit={handlePinSubmit}
+        errorMessage={pinErrorMessage}
+      />
       {/* Header */}
       <LinearGradient
         colors={["#004EBA", "#2181FF"]}
@@ -728,7 +785,7 @@ const Home = () => {
           elevation: 10,
           marginHorizontal: 20,
           paddingVertical: 15,
-          paddingHorizontal: 20,
+          paddingHorizontal: 15,
           borderRadius: 20,
           borderWidth: 2,
           borderColor: "#cce4ff",
@@ -778,7 +835,7 @@ const Home = () => {
                 justifyContent: "center",
                 paddingVertical: 7,
               }}
-              className="py-2 px-5 flex-row items-center space-x-2">
+              className="py-2 px-5 flex-row items-center space-x-2 ml-2">
               <Image source={icons.pay} className="w-3.5 h-4" tintColor="white" />
               <Text className="text-white font-medium text-sm">{customerType === "pascabayar" ? "Bayar Sekarang" : "Beli Token"}</Text>
             </LinearGradient>
