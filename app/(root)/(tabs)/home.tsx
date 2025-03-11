@@ -715,7 +715,7 @@ const Home = () => {
               <Text style={{ fontSize: 14, color: "#43A047" }}>{alertMessage}</Text>
             </View>
             <TouchableOpacity onPress={hideAnimatedAlert}>
-              <Image source={{ uri: "close_icon_url" }} style={{ width: 14, height: 14, tintColor: "#43A047" }} />
+              <Image source={images.close2} style={{ width: 14, height: 14, tintColor: "#43A047" }} />
             </TouchableOpacity>
           </View>
         </Animated.View>
