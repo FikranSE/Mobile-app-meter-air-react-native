@@ -46,9 +46,6 @@ import check2 from "@/assets/images/check-2.png";
 import getStarted from "@/assets/images/get-started.png";
 import message from "@/assets/images/message.png";
 import noResult from "@/assets/images/no-result.png";
-import onboarding1 from "@/assets/images/onboarding1.png";
-import onboarding2 from "@/assets/images/onboarding2.png";
-import onboarding3 from "@/assets/images/onboarding3.png";
 import signUpWater from "@/assets/images/signUpWater.jpg";
 import waterDrop from "@/assets/images/favicon.png";
 import banner from "@/assets/images/banner.jpeg";
@@ -62,9 +59,6 @@ import close2 from "@/assets/images/close2.png";
 import kadar from "@/assets/images/kadar.png";
 
 export const images = {
-  onboarding1,
-  onboarding2,
-  onboarding3,
   getStarted,
   signUpWater,
   check,
@@ -129,30 +123,3 @@ export const icons = {
   loading
 };
 
-export const onboarding = [
-  {
-    id: 1,
-    title: "Integrasi dengan sistem",
-    description:
-      "Pembayaran prabayar atau pascabayar lebih mudah, bisa dilakukan dimanapun dan kapanpun",
-    image: images.onboarding1,
-  },
-  {
-    id: 2,
-    title: "Hemat Biaya",
-    description:
-      "Tanpa perlu khawatir tentang biaya karena diaplikasi Mata Air banyak promo",
-    image: images.onboarding2,
-  },
-  {
-    id: 3,
-    title: "Let's go!",
-    description:
-      "Selamat menikmati layanan kami.",
-    image: images.onboarding3,
-  },
-];
-
-export const data = {
-  onboarding,
-};
