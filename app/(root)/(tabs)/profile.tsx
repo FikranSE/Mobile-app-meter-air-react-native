@@ -46,7 +46,8 @@ const MenuButton = ({ label, onPress }) => {
 const Pengaturan = () => {
   // 3. Data menu untuk pengaturan akun
   const accountMenus = [
-    { label: "Update Akun", onPress: () => {} },
+    { label: "Update Akun", onPress: () => router.push("/(root)/change-password") },
+    { label: "Change Pin Transaction", onPress: () => router.push("/(root)/change-pinTrans") },
     { label: "Metode Pembayaran", onPress: () => {} },
   ];
 

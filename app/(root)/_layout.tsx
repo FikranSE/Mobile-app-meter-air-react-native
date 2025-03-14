@@ -11,6 +11,8 @@ const Layout = () => {
       <Stack.Screen name="notifikasi" options={{headerShown: false}}/>
       <Stack.Screen name="berita" options={{headerShown: false}}/>
       <Stack.Screen name="chat" options={{headerShown: false}}/>
+      <Stack.Screen name="change-password" options={{headerShown: false}}/>
+      <Stack.Screen name="change-pinTrans" options={{headerShown: false}}/>
     </Stack>
   );
 };
