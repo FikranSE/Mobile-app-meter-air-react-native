@@ -171,7 +171,7 @@ const ChangePassword = () => {
             }}>
             <View
               style={{
-                backgroundColor: alertType === "success" ? "#E1F5FE" : "#FFEBEE",
+                backgroundColor: alertType === "success" ? "#E1FEEBFF" : "#FFEBEE",
                 padding: 16,
                 margin: 16,
                 borderRadius: 12,

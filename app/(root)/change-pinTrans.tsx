@@ -215,7 +215,7 @@ const ChangePinTransaction = () => {
             }}>
             <View
               style={{
-                backgroundColor: alertType === "success" ? "#E1F5FE" : "#FFEBEE",
+                backgroundColor: alertType === "success" ? "#E1FEEEFF" : "#FFEBEE",
                 padding: 16,
                 margin: 16,
                 borderRadius: 12,
@@ -229,7 +229,7 @@ const ChangePinTransaction = () => {
               }}>
               <View
                 className="w-8 h-8 rounded-full items-center justify-center mr-3"
-                style={{ backgroundColor: alertType === "success" ? "#0288D1" : "#D32F2F" }}>
+                style={{ backgroundColor: alertType === "success" ? "#43A047" : "#D32F2F" }}>
                 <Ionicons name={alertType === "success" ? "checkmark" : "close"} size={16} color="#FFFFFF" />
               </View>
               <View style={{ flex: 1 }}>
@@ -237,7 +237,7 @@ const ChangePinTransaction = () => {
                   style={{
                     fontSize: 14,
                     fontWeight: "600",
-                    color: alertType === "success" ? "#0288D1" : "#D32F2F",
+                    color: alertType === "success" ? "#2E7D32" : "#D32F2F",
                     marginBottom: 1,
                   }}>
                   {alertType === "success" ? "Berhasil" : "Gagal"}
@@ -245,13 +245,13 @@ const ChangePinTransaction = () => {
                 <Text
                   style={{
                     fontSize: 12,
-                    color: alertType === "success" ? "#0288D1" : "#D32F2F",
+                    color: alertType === "success" ? "#2E7D32" : "#D32F2F",
                   }}>
                   {alertMessage}
                 </Text>
               </View>
               <TouchableOpacity onPress={hideAnimatedAlert} className="p-2">
-                <Ionicons name="close" size={16} color={alertType === "success" ? "#0288D1" : "#D32F2F"} />
+                <Ionicons name="close" size={16} color={alertType === "success" ? "#2E7D32" : "#D32F2F"} />
               </TouchableOpacity>
             </View>
           </Animated.View>
