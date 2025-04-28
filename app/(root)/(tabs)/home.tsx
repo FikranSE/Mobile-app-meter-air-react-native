@@ -11,7 +11,7 @@ import axios from "axios";
 import AccountSelector from "@/components/AccountSelector";
 import PinTransactionModal from "@/components/PinTransactionModal";
 
-
+ 
 const Home = () => {
   const [customerType, setCustomerType] = useState("prabayar");
   const [customerData, setCustomerData] = useState(null);
@@ -758,21 +758,6 @@ const Home = () => {
             </View>
           </TouchableOpacity>
         </View>
-
-        <Text className="text-white text-xl font-bold text-center mt-3">{customerType === "pascabayar" ? "Meteran Air" : "Air Tersisa"}</Text>
-        <View className="items-center my-5">
-          <ImageBackground
-            source={images.kadar}
-            style={{
-              width: 96,
-              height: 96,
-              borderRadius: 999,
-              justifyContent: "center",
-              alignItems: "center",
-            }}>
-            <Text className="text-white text-xl font-bold">{totalCubic}m³</Text>
-          </ImageBackground>
-        </View>
       </LinearGradient>
 
       {/* Customer Info Card */}
@@ -790,7 +775,7 @@ const Home = () => {
           borderWidth: 2,
           borderColor: "#cce4ff",
         }}
-        className="-mt-7"
+        className="-mt-28"
         colors={["#2181FF", "#004EBA"]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}>

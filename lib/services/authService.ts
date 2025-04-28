@@ -1,8 +1,8 @@
-// lib/services/authService.js - Complete fix
+import axios from "axios"; // Pastikan axios diimpor di sini juga
 import { api } from "../api";
 
 export async function generateToken() {
-  // Clean the credentials from any unwanted characters
+  // Bersihkan credentials
   const consId = process.env.EXPO_PUBLIC_WH8_CONS_ID?.replace(/[",]/g, "") || "admin-wh8";
   const secretId = process.env.EXPO_PUBLIC_WH8_SECRET_ID?.replace(/[",]/g, "") || "J0y8ywndY7";
 
@@ -13,10 +13,11 @@ export async function generateToken() {
     });
 
     const response = await api.post(
-      "/generateToken", // Removed the leading slash to avoid path issues
+      "/generateToken",
       {}, // Empty body
       {
         headers: {
+          Accept: "application/json text/plain */*",
           "Content-Type": "application/json",
           "wh8-cons-id": consId,
           "wh8-secret-id": secretId,
@@ -31,32 +32,38 @@ export async function generateToken() {
 
     if (error.request) {
       console.error("Request details:", {
-        url: error.request._url,
-        method: error.request._method,
-        headers: error.request._headers,
+        url: error.config?.url || "Unknown URL",
+        method: error.config?.method || "Unknown method",
+        headers: error.config?.headers || "Unknown headers",
       });
     }
 
-    // Try a fallback approach with direct axios if the api instance fails
+    // Perbaikan implementasi fallback
     try {
       console.log("Attempting fallback direct axios request");
-      const axios = require("axios");
-      const directResponse = await axios.post(
-        "https://pdampolman.airmurah.id/api/generateToken",
-        {},
-        {
-          headers: {
-            "Content-Type": "application/json",
-            "wh8-cons-id": consId,
-            "wh8-secret-id": secretId,
-          },
-        }
-      );
+      const fallbackResponse = await axios({
+        method: "post",
+        url: "https://pdampolman.airmurah.id/api/generateToken",
+        headers: {
+          Accept: "application/json text/plain */*",
+          "Content-Type": "application/json",
+          "wh8-cons-id": consId,
+          "wh8-secret-id": secretId,
+        },
+        timeout: 20000,
+      });
+
       console.log("Fallback succeeded");
-      return directResponse.data.response.access_token;
+      return fallbackResponse.data.response.access_token;
     } catch (fallbackError) {
       console.error("Fallback also failed:", fallbackError.message);
-      throw fallbackError;
+      // Tambahkan detail error untuk debugging
+      if (fallbackError.response) {
+        console.error("Fallback response error:", fallbackError.response.data);
+      } else if (fallbackError.request) {
+        console.error("Fallback request error:", fallbackError.request);
+      }
+      throw new Error(`Failed to generate token: ${fallbackError.message}`);
     }
   }
 }
@@ -68,9 +75,10 @@ export async function registerAccount(accessToken, userData) {
       {}, // Empty body
       {
         headers: {
+          Accept: "application/json text/plain */*",
           "Content-Type": "application/json",
-          "wh8-cons-id": process.env.EXPO_PUBLIC_WH8_CONS_ID?.replace(/[",]/g, ""),
-          "wh8-secret-id": process.env.EXPO_PUBLIC_WH8_SECRET_ID?.replace(/[",]/g, ""),
+          "wh8-cons-id": process.env.EXPO_PUBLIC_WH8_CONS_ID?.replace(/[",]/g, "") || "admin-wh8",
+          "wh8-secret-id": process.env.EXPO_PUBLIC_WH8_SECRET_ID?.replace(/[",]/g, "") || "J0y8ywndY7",
           "wh8-access-token": accessToken,
           "wh8-user-name": userData.username,
           "wh8-user-full-name": userData.name,
@@ -82,7 +90,10 @@ export async function registerAccount(accessToken, userData) {
     );
     return response.data.metadata.message;
   } catch (error) {
-    console.error("Error registering account:", error);
+    console.error("Error registering account:", error.message);
+    if (error.response) {
+      console.error("Registration response error:", error.response.data);
+    }
     throw error;
   }
 }
@@ -94,8 +105,10 @@ export async function loginAccount(accessToken, userName, userPassword) {
       {}, // Empty body
       {
         headers: {
+          Accept: "application/json text/plain */*",
           "Content-Type": "application/json",
-          "wh8-cons-id": process.env.EXPO_PUBLIC_WH8_CONS_ID?.replace(/[",]/g, ""),
+          "wh8-cons-id": process.env.EXPO_PUBLIC_WH8_CONS_ID?.replace(/[",]/g, "") || "admin-wh8",
+          "wh8-secret-id": process.env.EXPO_PUBLIC_WH8_SECRET_ID?.replace(/[",]/g, "") || "J0y8ywndY7",
           "wh8-access-token": accessToken,
           "wh8-user-name": userName,
           "wh8-user-password": userPassword,
@@ -104,8 +117,10 @@ export async function loginAccount(accessToken, userName, userPassword) {
     );
     return response.data.response["data-token"];
   } catch (error) {
-    console.error("Error logging in:", error);
+    console.error("Error logging in:", error.message);
+    if (error.response) {
+      console.error("Login response error:", error.response.data);
+    }
     throw error;
   }
 }
- 

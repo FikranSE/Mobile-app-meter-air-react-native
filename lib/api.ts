@@ -1,33 +1,37 @@
-// lib/api.js - Completely fixed version
 import axios from "axios";
 
-// Fix the baseURL format - this is critical!
-const baseURL = process.env.EXPO_PUBLIC_WH8_API_BASE_URL?.replace(/[",]/g, "");
+// Perbaikan baseURL - Gunakan URL hardcoded jika env tidak ada
+const baseURL = process.env.EXPO_PUBLIC_WH8_API_BASE_URL?.replace(/[",]/g, "") || "https://pdampolman.airmurah.id/api";
 
 export const api = axios.create({
   baseURL: baseURL,
-  timeout: 10000,
+  timeout: 15000, // Memperpanjang timeout
   headers: {
     "Content-Type": "application/json",
+    Accept: "application/json text/plain */*",
   },
 });
 
-// Completely redesigned request interceptor
+// Perbaikan interceptor request
 api.interceptors.request.use(
   (config) => {
-    // Fix the URL construction
+    // Perbaikan URL jika diperlukan
     if (config.url && config.url.includes(",")) {
-      config.url = config.url.replace(",", "/");
+      config.url = config.url.replace(/,/g, "/");
     }
 
-    // Fix quote issues in URL
+    // Hapus quote dari URL
     if (config.url) {
       config.url = config.url.replace(/['"]/g, "");
     }
 
-    // Fix headers
+    // Pastikan URL dimulai dengan / jika perlu
+    if (config.url && !config.url.startsWith("/") && !config.url.startsWith("http")) {
+      config.url = `/${config.url}`;
+    }
+
+    // Bersihkan headers
     if (config.headers) {
-      // Ensure headers don't have commas or quotes
       Object.keys(config.headers).forEach((key) => {
         if (typeof config.headers[key] === "string") {
           config.headers[key] = config.headers[key].replace(/[",]/g, "");
@@ -37,6 +41,7 @@ api.interceptors.request.use(
 
     console.log("Clean Request:", {
       url: `${config.baseURL}${config.url}`,
+      method: config.method,
       headers: config.headers,
     });
 
@@ -48,8 +53,10 @@ api.interceptors.request.use(
   }
 );
 
+// Perbaikan interceptor response
 api.interceptors.response.use(
   (response) => {
+    console.log("API Response received:", response.status);
     return response;
   },
   (error) => {
@@ -59,7 +66,7 @@ api.interceptors.response.use(
       console.error("Response status:", error.response.status);
     } else if (error.request) {
       console.error("No response received:", error.request);
-      console.error("Request URL:", error.request._url);
+      console.error("Request URL:", error.config?.url);
     }
     return Promise.reject(error);
   }
