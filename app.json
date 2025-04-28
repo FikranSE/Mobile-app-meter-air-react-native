@@ -16,6 +16,7 @@
       "supportsTablet": true
     },
     "android": {
+      "permissions": ["INTERNET"],
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
@@ -39,8 +40,9 @@
       "typedRoutes": true
     },
     "extra": {
-      "router": {
-        "origin": "https://meter.dev/"
+      "proxy": {
+        "host": "https://pdampolman.airmurah.id",
+        "enabled": true
       },
       "eas": {
         "projectId": "e0f57ee8-40e5-4b5c-8815-37fc0786e768"
